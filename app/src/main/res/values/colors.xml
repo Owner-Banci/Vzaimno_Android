@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="vzaimno_turquoise">#3CC8C4</color>
+    <color name="vzaimno_milk">#F7F3E9</color>
+    <color name="vzaimno_peach">#FFC9A6</color>
+    <color name="vzaimno_surface">#FFFDFC</color>
+    <color name="vzaimno_text">#1A1A1A</color>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>
