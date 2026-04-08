@@ -1,3 +1,100 @@
 <resources>
     <string name="app_name">Vzaimno</string>
+    <string name="root_restoring_title">Проверяем сессию</string>
+    <string name="root_restoring_message">Смотрим локальный токен и подтверждаем пользователя перед открытием приложения.</string>
+    <string name="root_restore_failed_title">Сессию не удалось восстановить</string>
+    <string name="root_restore_failed_offline_title">Нужна сеть для проверки</string>
+    <string name="root_retry">Повторить</string>
+    <string name="root_clear_session">Очистить локальную сессию</string>
+
+    <string name="shell_brand_caption">Vzaimno</string>
+    <string name="shell_banner_offline">Нет подключения к интернету. Данные в приложении обновятся, как только сеть вернётся.</string>
+    <string name="shell_section_next_stage">Следующий этап</string>
+    <string name="shell_section_ready_now">Уже подготовлено</string>
+
+    <string name="shell_tab_map">Карта</string>
+    <string name="shell_tab_route">Маршрут</string>
+    <string name="shell_tab_ads">Объявления</string>
+    <string name="shell_tab_chats">Чаты</string>
+    <string name="shell_tab_profile">Профиль</string>
+
+    <string name="shell_map_title">Карта задач</string>
+    <string name="shell_map_subtitle">Здесь появятся живые точки, фильтры и быстрый вход в карточки объявлений рядом с вами.</string>
+    <string name="shell_map_hero_title">Экран готов для реальной карты</string>
+    <string name="shell_map_hero_body">Shell уже держит место под карту, верхний приоритет и рабочую зону, чтобы на следующем этапе сюда без боли встали данные и интерактив.</string>
+    <string name="shell_map_metric_zone">Рабочая зона</string>
+    <string name="shell_map_metric_zone_value">До 3 км рядом</string>
+    <string name="shell_map_metric_priority">Фокус старта</string>
+    <string name="shell_map_metric_priority_value">Ближайшие точки</string>
+    <string name="shell_map_section_title">Что подключим следующим</string>
+    <string name="shell_map_feature_markers_title">Маркеры и кластеры</string>
+    <string name="shell_map_feature_markers_body">Объявления и задачи будут группироваться по району, чтобы экран оставался читаемым даже при плотной выдаче.</string>
+    <string name="shell_map_feature_filters_title">Фильтры по времени и типу</string>
+    <string name="shell_map_feature_filters_body">Появятся быстрые условия для ближайших задач, маршрутов по пути и отдельных категорий объявлений.</string>
+
+    <string name="shell_route_title">Маршрут дня</string>
+    <string name="shell_route_subtitle">Экран подготовлен под последовательность точек, временные окна и сборку задач по пути.</string>
+    <string name="shell_route_hero_title">Маршрут станет главным рабочим сценарием</string>
+    <string name="shell_route_hero_body">Здесь будет собираться цепочка остановок, полезные объявления по пути и понятный контроль того, что уже сделано.</string>
+    <string name="shell_route_metric_window">Окно планирования</string>
+    <string name="shell_route_metric_window_value">Утро и день</string>
+    <string name="shell_route_metric_mode">Стартовый режим</string>
+    <string name="shell_route_metric_mode_value">По пути к делам</string>
+    <string name="shell_route_section_title">Базовые блоки уже предусмотрены</string>
+    <string name="shell_route_feature_timeline_title">Лента этапов</string>
+    <string name="shell_route_feature_timeline_body">Верхняя часть экрана готова к показу последовательности точек с понятным временем и статусами.</string>
+    <string name="shell_route_feature_guidance_title">Подсказки по следующему шагу</string>
+    <string name="shell_route_feature_guidance_body">Shell уже рассчитан на сценарий, где приложение подсказывает ближайшее действие без лишних переходов.</string>
+
+    <string name="shell_ads_title">Объявления</string>
+    <string name="shell_ads_subtitle">Раздел подготовлен под список объявлений, фильтры и быстрый запуск создания новой заявки.</string>
+    <string name="shell_ads_hero_title">Лента объявлений встанет в этот каркас</string>
+    <string name="shell_ads_hero_body">Мы уже перенесли структуру раздела: главный обзор, блок управления выдачей и удобные контейнеры под реальный контент.</string>
+    <string name="shell_ads_metric_scope">Стартовая выдача</string>
+    <string name="shell_ads_metric_scope_value">Рядом и по пути</string>
+    <string name="shell_ads_metric_focus">Ключевой сценарий</string>
+    <string name="shell_ads_metric_focus_value">Быстрый просмотр</string>
+    <string name="shell_ads_section_title">Что будет следующим шагом</string>
+    <string name="shell_ads_feature_filters_title">Фильтры без перегруза</string>
+    <string name="shell_ads_feature_filters_body">Добавим отбор по категории, времени и цене, сохранив спокойную и понятную иерархию раздела.</string>
+    <string name="shell_ads_feature_create_title">Создание объявления</string>
+    <string name="shell_ads_feature_create_body">На этом же экране появится вход в публикацию нового объявления и редактирование черновиков.</string>
+
+    <string name="shell_chats_title">Чаты</string>
+    <string name="shell_chats_subtitle">Коммуникации по задачам, маршрутам и поддержке будут собраны здесь в одном спокойном рабочем потоке.</string>
+    <string name="shell_chats_hero_title">Чаты готовы стать рабочим центром коммуникации</string>
+    <string name="shell_chats_hero_body">Раздел уже оформлен как production-экран: крупная шапка, понятные блоки и отдельный путь на глубокий экран диалога.</string>
+    <string name="shell_chats_section_title">Можно проверить уже сейчас</string>
+    <string name="shell_chats_feature_updates_title">Последние обновления</string>
+    <string name="shell_chats_feature_updates_body">Список диалогов займёт этот блок и покажет новые сообщения, статусы и последние действия по задаче.</string>
+    <string name="shell_chats_feature_support_title">Отдельный deep screen</string>
+    <string name="shell_chats_feature_support_body">Кнопка ниже открывает вторичный экран диалога, где нижняя навигация уже скрывается по правилам shell.</string>
+    <string name="shell_chats_open_preview">Открыть демо-диалог</string>
+
+    <string name="shell_chat_preview_title">Диалог по задаче</string>
+    <string name="shell_chat_preview_back">Назад</string>
+    <string name="shell_chat_preview_subtitle">Это проверочный вторичный экран: нижняя навигация скрыта, а сам маршрут готов для будущего реального чата.</string>
+    <string name="shell_chat_preview_sender">Поддержка Vzaimno</string>
+    <string name="shell_chat_preview_message_one">Здравствуйте! Мы уже подготовили shell для полноценного чата. Следующим этапом сюда подключим реальные сообщения и статусы доставки.</string>
+    <string name="shell_chat_preview_message_two">Нижняя навигация скрыта специально: deep screen ведёт себя отдельно от top-level вкладок и не мешает чтению диалога.</string>
+    <string name="shell_chat_preview_message_three">Когда появятся реальные данные, этот экран станет основой для переписки по объявлению или маршруту.</string>
+
+    <string name="shell_profile_title">Профиль</string>
+    <string name="shell_profile_subtitle">Здесь мы сохраняем доступ к сессии, состоянию сети и базовым действиям аккаунта без технического шума.</string>
+    <string name="shell_profile_email_placeholder">Аккаунт активен</string>
+    <string name="shell_profile_hero_body">Профиль уже выполняет роль безопасной точки управления сессией, пока основные пользовательские разделы наполняются живыми данными.</string>
+    <string name="shell_profile_metric_access">Статус сессии</string>
+    <string name="shell_profile_metric_network">Подключение</string>
+    <string name="shell_profile_access_verified">Подтверждена сервером</string>
+    <string name="shell_profile_access_cached">Сохранена локально</string>
+    <string name="shell_profile_network_online">Онлайн</string>
+    <string name="shell_profile_network_offline">Оффлайн</string>
+    <string name="shell_profile_section_title">Управление аккаунтом</string>
+    <string name="shell_profile_feature_session_title">Состояние доступа</string>
+    <string name="shell_profile_feature_session_body">Сессия готова к работе. Здесь останутся понятные действия для обновления данных и безопасного выхода.</string>
+    <string name="shell_profile_feature_connectivity_title">Состояние сети</string>
+    <string name="shell_profile_feature_connectivity_online">Сеть доступна. Данные можно обновлять в обычном режиме.</string>
+    <string name="shell_profile_feature_connectivity_offline">Сеть недоступна. Приложение сохранит контекст и продолжит работу, где это возможно.</string>
+    <string name="shell_profile_logout">Выйти из аккаунта</string>
+    <string name="shell_profile_logout_loading">Выходим...</string>
 </resources>

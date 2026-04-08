@@ -52,7 +52,7 @@ class BootstrapViewModel @Inject constructor(
         routeRepository::class.simpleName.orEmpty(),
     )
 
-    val uiState = sessionManager.sessionState
+    val uiState = sessionManager.activeSession
         .map { session ->
             BootstrapUiState(
                 environment = appConfig.environment.rawValue,

@@ -7,11 +7,15 @@ import com.vzaimno.app.BuildConfig
 import com.vzaimno.app.core.common.IoDispatcher
 import com.vzaimno.app.core.common.ensureTrailingSlash
 import com.vzaimno.app.core.common.toWebSocketBaseUrl
+import com.vzaimno.app.core.connectivity.AndroidConnectivityMonitor
+import com.vzaimno.app.core.connectivity.ConnectivityMonitor
 import com.vzaimno.app.core.config.AppConfig
 import com.vzaimno.app.core.config.AppEnvironment
 import com.vzaimno.app.core.network.ApiErrorMapper
 import com.vzaimno.app.core.network.AuthTokenProvider
 import com.vzaimno.app.core.network.BearerTokenInterceptor
+import com.vzaimno.app.core.security.EncryptedSecureSessionStorage
+import com.vzaimno.app.core.security.SecureSessionStorage
 import com.vzaimno.app.data.remote.AnnouncementApi
 import com.vzaimno.app.data.remote.AuthApi
 import com.vzaimno.app.data.remote.ChatApi
@@ -38,7 +42,6 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
-import kotlin.coroutines.CoroutineContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.Json
@@ -87,10 +90,11 @@ object AppModule {
     ): OkHttpClient {
         val loggingInterceptor = HttpLoggingInterceptor().apply {
             level = if (BuildConfig.DEBUG) {
-                HttpLoggingInterceptor.Level.BODY
+                HttpLoggingInterceptor.Level.BASIC
             } else {
                 HttpLoggingInterceptor.Level.NONE
             }
+            redactHeader("Authorization")
         }
 
         return OkHttpClient.Builder()
@@ -154,6 +158,14 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindAuthTokenProvider(sessionManager: SessionManager): AuthTokenProvider
+
+    @Binds
+    @Singleton
+    abstract fun bindSecureSessionStorage(impl: EncryptedSecureSessionStorage): SecureSessionStorage
+
+    @Binds
+    @Singleton
+    abstract fun bindConnectivityMonitor(impl: AndroidConnectivityMonitor): ConnectivityMonitor
 
     @Binds
     @Singleton

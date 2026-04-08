@@ -80,7 +80,7 @@ class ApiErrorMapper @Inject constructor(
 
         is IOException -> ApiError(
             kind = ApiErrorKind.Connectivity,
-            message = "Сеть недоступна. Проверьте соединение и base URL.",
+            message = "Не удалось подключиться к серверу. Проверьте интернет и попробуйте снова.",
         )
 
         is SerializationException -> ApiError(

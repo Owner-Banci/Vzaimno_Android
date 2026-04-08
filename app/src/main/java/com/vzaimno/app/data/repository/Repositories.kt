@@ -62,7 +62,6 @@ interface AuthRepository {
     suspend fun register(credentials: RegisterCredentials): ApiResult<AccessToken>
     suspend fun login(credentials: LoginCredentials): ApiResult<AccessToken>
     suspend fun fetchMe(): ApiResult<SessionUser>
-    fun clearSession()
 }
 
 interface ProfileRepository {
@@ -153,29 +152,26 @@ interface RouteRepository {
 @Singleton
 class DefaultAuthRepository @Inject constructor(
     private val authApi: AuthApi,
-    private val sessionManager: SessionManager,
     private val apiErrorMapper: ApiErrorMapper,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : AuthRepository {
 
     override suspend fun register(credentials: RegisterCredentials): ApiResult<AccessToken> = repositoryCall {
-        authApi.register(credentials.toDto()).toDomain().also(sessionManager::updateAccessToken)
+        authApi.register(credentials.toDto()).toDomain()
     }
 
     override suspend fun login(credentials: LoginCredentials): ApiResult<AccessToken> = repositoryCall {
-        authApi.login(credentials.toDto()).toDomain().also(sessionManager::updateAccessToken)
+        authApi.login(credentials.toDto()).toDomain()
     }
 
     override suspend fun fetchMe(): ApiResult<SessionUser> = repositoryCall {
-        authApi.me().toDomain().also(sessionManager::updateUser)
-    }
-
-    override fun clearSession() {
-        sessionManager.clearSession()
+        authApi.me().toDomain()
     }
 
     private suspend fun <T> repositoryCall(block: suspend () -> T): ApiResult<T> =
-        sessionAwareApiCall(ioDispatcher, apiErrorMapper, sessionManager, block)
+        withContext(ioDispatcher) {
+            safeApiCall(apiErrorMapper, block)
+        }
 }
 
 @Singleton
