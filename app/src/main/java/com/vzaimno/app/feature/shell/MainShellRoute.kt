@@ -38,6 +38,9 @@ import androidx.navigation.navigation
 import com.vzaimno.app.R
 import com.vzaimno.app.core.designsystem.theme.spacing
 import com.vzaimno.app.core.session.SessionState
+import com.vzaimno.app.feature.ads.AdsDestination
+import com.vzaimno.app.feature.ads.AnnouncementDetailsRoute
+import com.vzaimno.app.feature.ads.MyAnnouncementsRoute
 import com.vzaimno.app.feature.shell.components.ShellBanner
 import com.vzaimno.app.feature.shell.components.ShellBannerState
 import com.vzaimno.app.feature.shell.components.ShellBannerTone
@@ -47,7 +50,6 @@ import com.vzaimno.app.feature.shell.navigation.rememberShellBottomBarVisibility
 import com.vzaimno.app.feature.profile.ProfileDestination
 import com.vzaimno.app.feature.profile.ProfileEditRoute
 import com.vzaimno.app.feature.profile.ProfileReviewsRoute
-import com.vzaimno.app.feature.shell.screens.AnnouncementsShellScreen
 import com.vzaimno.app.feature.shell.screens.ChatPreviewScreen
 import com.vzaimno.app.feature.shell.screens.ChatsShellScreen
 import com.vzaimno.app.feature.shell.screens.MapShellScreen
@@ -140,10 +142,34 @@ fun MainShellRoute(
 
                     navigation(
                         route = ShellTabDestination.Ads.graphRoute,
-                        startDestination = ShellTabDestination.Ads.rootRoute,
+                        startDestination = AdsDestination.homeRoute,
                     ) {
-                        composable(route = ShellTabDestination.Ads.rootRoute) {
-                            AnnouncementsShellScreen()
+                        composable(route = AdsDestination.homeRoute) { backStackEntry ->
+                            val refreshSignal by backStackEntry.savedStateHandle
+                                .getStateFlow(AdsDestination.refreshResultKey, false)
+                                .collectAsStateWithLifecycle()
+                            MyAnnouncementsRoute(
+                                onOpenDetails = { announcementId ->
+                                    navController.navigate(AdsDestination.detailsRoute(announcementId))
+                                },
+                                refreshSignal = refreshSignal,
+                                onRefreshSignalHandled = {
+                                    backStackEntry.savedStateHandle[AdsDestination.refreshResultKey] = false
+                                },
+                            )
+                        }
+                        composable(
+                            route = AdsDestination.detailsRoutePattern,
+                            arguments = AdsDestination.detailsArguments,
+                        ) {
+                            AnnouncementDetailsRoute(
+                                onBack = navController::navigateUp,
+                                onRequestParentRefresh = {
+                                    navController.previousBackStackEntry
+                                        ?.savedStateHandle
+                                        ?.set(AdsDestination.refreshResultKey, true)
+                                },
+                            )
                         }
                     }
 

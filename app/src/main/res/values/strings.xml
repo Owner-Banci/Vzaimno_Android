@@ -60,6 +60,147 @@
     <string name="shell_ads_feature_create_title">Создание объявления</string>
     <string name="shell_ads_feature_create_body">На этом же экране появится вход в публикацию нового объявления и редактирование черновиков.</string>
 
+    <string name="ads_screen_title">Мои объявления</string>
+    <string name="ads_screen_subtitle">Следите за статусами, быстро возвращайтесь к деталям и держите под рукой всё, что требует вашего внимания.</string>
+    <string name="ads_summary_title">Сводка</string>
+    <string name="ads_filter_active">Активные</string>
+    <string name="ads_filter_actions">Ждут действий</string>
+    <string name="ads_filter_archive">Архив</string>
+
+    <string name="ads_status_draft">Черновик</string>
+    <string name="ads_status_pending_review">На проверке</string>
+    <string name="ads_status_needs_fix">Нужно исправить</string>
+    <string name="ads_status_rejected">Отклонено</string>
+    <string name="ads_status_archived">В архиве</string>
+    <string name="ads_status_completed">Завершено</string>
+    <string name="ads_status_cancelled">Отменено</string>
+    <string name="ads_status_deleted">Удалено</string>
+    <string name="ads_status_assigned">Назначено</string>
+    <string name="ads_status_en_route">В пути</string>
+    <string name="ads_status_on_site">На месте</string>
+    <string name="ads_status_in_progress">В работе</string>
+    <string name="ads_status_handoff">Передача</string>
+    <string name="ads_status_disputed">Нужен разбор</string>
+    <string name="ads_status_active">Активно</string>
+
+    <string name="ads_status_description_draft">Черновик ещё не опубликован и пока не участвует в выдаче.</string>
+    <string name="ads_status_description_pending_review">Объявление отправлено на модерацию и станет доступно после проверки.</string>
+    <string name="ads_status_description_needs_fix">Модерация просит поправить данные или медиа перед повторной публикацией.</string>
+    <string name="ads_status_description_rejected">Объявление отклонено. Если причина спорная, можно подать апелляцию.</string>
+    <string name="ads_status_description_archived">Объявление скрыто из активной выдачи и сохранено в архиве.</string>
+    <string name="ads_status_description_completed">Задание завершено и остаётся только в истории.</string>
+    <string name="ads_status_description_cancelled">Задание отменено и больше не участвует в активных сценариях.</string>
+    <string name="ads_status_description_deleted">Объявление удалено и больше не отображается в активных разделах.</string>
+    <string name="ads_status_description_assigned">Исполнитель уже найден, новые отклики по объявлению больше не принимаются.</string>
+    <string name="ads_status_description_en_route">Исполнитель уже в пути к точке выполнения задания.</string>
+    <string name="ads_status_description_on_site">Исполнитель прибыл на точку и продолжает выполнение задания.</string>
+    <string name="ads_status_description_in_progress">Задание сейчас выполняется и находится в рабочем процессе.</string>
+    <string name="ads_status_description_handoff">Задание находится на финальном этапе передачи или завершения.</string>
+    <string name="ads_status_description_disputed">По заданию нужен разбор ситуации, поэтому стоит проверить детали и сообщения.</string>
+    <string name="ads_status_description_active">Объявление активно и доступно для откликов.</string>
+
+    <string name="ads_decision_technical_pending">Автоматическая проверка временно недоступна. Объявление ждёт дополнительной проверки.</string>
+    <string name="ads_decision_pending_review">На проверке: объявление отправлено на модерацию.</string>
+
+    <string name="ads_category_delivery">Доставка и поручения</string>
+    <string name="ads_category_help">Помощь</string>
+
+    <string name="ads_error_title">Не удалось загрузить объявления</string>
+    <string name="ads_inline_error_title">Не всё получилось обновить</string>
+    <string name="ads_inline_error_dismiss">Скрыть</string>
+    <string name="ads_empty_title">Здесь пока пусто</string>
+    <string name="ads_empty_message">Как только вы создадите первое объявление, оно появится в этом списке.</string>
+    <string name="ads_filter_empty_active_title">В активных пока пусто</string>
+    <string name="ads_filter_empty_active_message">Когда объявление пройдёт публикацию и станет рабочим, оно появится здесь.</string>
+    <string name="ads_filter_empty_actions_title">Сейчас ничего не ждёт вашего внимания</string>
+    <string name="ads_filter_empty_actions_message">Если объявление потребует правок, апелляции или проверки, вы увидите его в этом фильтре.</string>
+    <string name="ads_filter_empty_archive_title">Архив пока пуст</string>
+    <string name="ads_filter_empty_archive_message">Завершённые, скрытые и удалённые объявления со временем будут собираться здесь.</string>
+
+    <string name="ads_archive_action">В архив</string>
+    <string name="ads_delete_action">Удалить</string>
+    <string name="ads_appeal_action">Подать апелляцию</string>
+    <string name="ads_action_cancel">Отмена</string>
+    <string name="ads_action_ok">Понятно</string>
+
+    <string name="ads_archive_dialog_title">Переместить объявление в архив?</string>
+    <string name="ads_archive_dialog_message">Объявление «%1$s» исчезнет из активной выдачи, но останется в вашей истории.</string>
+    <string name="ads_archive_confirm">В архив</string>
+    <string name="ads_delete_dialog_title">Удалить объявление?</string>
+    <string name="ads_delete_dialog_message">Объявление «%1$s» будет удалено из ваших активных сценариев и списка.</string>
+    <string name="ads_delete_confirm">Удалить</string>
+    <string name="ads_delete_in_progress">Удаляем объявление и обновляем список…</string>
+
+    <string name="ads_item_menu">Действия с объявлением</string>
+    <string name="ads_no_photo_chip">Без фото</string>
+    <string name="ads_offers_count">%1$d откликов</string>
+    <string name="ads_image_preview_description">Предпросмотр фото объявления</string>
+
+    <string name="ads_create_entry_title">Новое объявление</string>
+    <string name="ads_create_entry_caption">Вход в новый create flow уже зарезервирован в интерфейсе, но сам сценарий откроем на следующем этапе.</string>
+    <string name="ads_create_entry_message">Полноценное создание объявления подключим следующим этапом. Пока здесь оставлен аккуратный вход в будущий сценарий.</string>
+    <string name="ads_create_entry_button">Открыть вход в создание</string>
+    <string name="ads_entry_soon">Скоро</string>
+
+    <string name="ads_back">Назад</string>
+    <string name="ads_details_title">Детали объявления</string>
+    <string name="ads_details_error_title">Не удалось открыть объявление</string>
+    <string name="ads_gallery_title">Фото и превью</string>
+    <string name="ads_status_section_title">Статус и модерация</string>
+    <string name="ads_data_section_title">Структурированные данные</string>
+    <string name="ads_addresses_section_title">Адреса и точки</string>
+    <string name="ads_attributes_section_title">Условия выполнения</string>
+    <string name="ads_media_section_title">Медиа</string>
+    <string name="ads_actions_section_title">Действия</string>
+
+    <string name="ads_field_title">Название</string>
+    <string name="ads_field_description">Описание</string>
+    <string name="ads_field_source_address">Адрес забора</string>
+    <string name="ads_field_destination_address">Адрес доставки</string>
+    <string name="ads_field_address">Адрес</string>
+    <string name="ads_field_media">Фото</string>
+    <string name="ads_field_category">Категория</string>
+    <string name="ads_field_urgency">Срочность</string>
+    <string name="ads_field_help_type">Тип помощи</string>
+    <string name="ads_field_purchase_type">Тип покупки</string>
+    <string name="ads_field_item_type">Предмет</string>
+    <string name="ads_field_source_kind">Откуда</string>
+    <string name="ads_field_destination_kind">Куда</string>
+    <string name="ads_field_weight">Вес</string>
+    <string name="ads_field_size">Габариты</string>
+    <string name="ads_field_duration">Оценка времени</string>
+    <string name="ads_field_waiting">Ожидание</string>
+    <string name="ads_field_budget">Бюджет</string>
+    <string name="ads_field_task_brief">Кратко о задаче</string>
+    <string name="ads_minutes_format">%1$d мин</string>
+
+    <string name="ads_attribute_vehicle">Нужен транспорт</string>
+    <string name="ads_attribute_trunk">Нужен багажник</string>
+    <string name="ads_attribute_careful">Осторожное обращение</string>
+    <string name="ads_attribute_loader">Нужен помощник</string>
+    <string name="ads_attribute_lift">Подъём на этаж</string>
+    <string name="ads_attribute_elevator">Есть лифт</string>
+    <string name="ads_attribute_waiting">Нужно подождать</string>
+    <string name="ads_attribute_contactless">Бесконтактно</string>
+    <string name="ads_attribute_receipt">Нужен чек</string>
+    <string name="ads_attribute_code">Нужен код подтверждения</string>
+    <string name="ads_attribute_call_before">Позвонить заранее</string>
+    <string name="ads_attribute_photo_report">Нужен фотоотчёт</string>
+
+    <string name="ads_media_missing_title">Фото не прикреплены</string>
+    <string name="ads_media_missing_message">Если к объявлению добавить медиа позже, превью появятся здесь.</string>
+    <string name="ads_media_attached_count">Прикреплено изображений: %1$d</string>
+
+    <string name="ads_reopen_entry_title">Вернуть объявление в работу</string>
+    <string name="ads_reopen_entry_caption">В read-only этапе мы показываем только вход в будущий сценарий возврата из архива.</string>
+    <string name="ads_reopen_entry_button">Открыть вход в возврат</string>
+    <string name="ads_reopen_entry_message">Возврат объявления из архива подключим отдельным шагом. Сейчас здесь оставлен только entry point для будущего сценария.</string>
+
+    <string name="ads_create_again_entry_title">Создать заново</string>
+    <string name="ads_create_again_entry_caption">Повторная публикация на основе этого объявления появится дальше как отдельный сценарий.</string>
+    <string name="ads_create_again_entry_button">Открыть вход в повтор</string>
+    <string name="ads_create_again_entry_message">Повторное создание по существующему объявлению оставлено на следующий этап. Сейчас доступен только интерфейсный entry point.</string>
+
     <string name="shell_chats_title">Чаты</string>
     <string name="shell_chats_subtitle">Коммуникации по задачам, маршрутам и поддержке будут собраны здесь в одном спокойном рабочем потоке.</string>
     <string name="shell_chats_hero_title">Чаты готовы стать рабочим центром коммуникации</string>

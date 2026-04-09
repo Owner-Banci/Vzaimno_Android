@@ -38,7 +38,7 @@ enum class ShellTabDestination(
     ),
     Ads(
         graphRoute = "shell/tab_ads",
-        rootRoute = "shell/tab_ads/home",
+        rootRoute = "ads/home",
         labelRes = R.string.shell_tab_ads,
         selectedIcon = Icons.Filled.ViewAgenda,
         unselectedIcon = Icons.Outlined.ViewAgenda,
