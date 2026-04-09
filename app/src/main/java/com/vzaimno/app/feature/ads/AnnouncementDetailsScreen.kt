@@ -93,6 +93,7 @@ import kotlinx.coroutines.flow.collectLatest
 fun AnnouncementDetailsRoute(
     onBack: () -> Unit,
     onRequestParentRefresh: () -> Unit,
+    onCreateAgain: (Announcement) -> Unit,
     viewModel: AnnouncementDetailsViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -121,6 +122,7 @@ fun AnnouncementDetailsRoute(
         onArchive = viewModel::archive,
         onDelete = viewModel::delete,
         onAppeal = viewModel::appeal,
+        onCreateAgain = onCreateAgain,
         onDismissInlineMessage = viewModel::clearContentMessage,
     )
 }
@@ -140,6 +142,7 @@ private fun AnnouncementDetailsScreen(
     onArchive: () -> Unit,
     onDelete: () -> Unit,
     onAppeal: () -> Unit,
+    onCreateAgain: (Announcement) -> Unit,
     onDismissInlineMessage: () -> Unit,
 ) {
     var pendingAction by remember { mutableStateOf<PendingDetailAction?>(null) }
@@ -384,7 +387,7 @@ private fun AnnouncementDetailsScreen(
                                         soonDialogMessageRes = R.string.ads_reopen_entry_message
                                     },
                                     onCreateAgain = {
-                                        soonDialogMessageRes = R.string.ads_create_again_entry_message
+                                        onCreateAgain(announcement)
                                     },
                                 )
                             }

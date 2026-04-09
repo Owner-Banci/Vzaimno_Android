@@ -41,6 +41,8 @@ import com.vzaimno.app.core.session.SessionState
 import com.vzaimno.app.feature.ads.AdsDestination
 import com.vzaimno.app.feature.ads.AnnouncementDetailsRoute
 import com.vzaimno.app.feature.ads.MyAnnouncementsRoute
+import com.vzaimno.app.feature.ads.AdsFilterBucket
+import com.vzaimno.app.feature.ads.create.AnnouncementCreateRoute
 import com.vzaimno.app.feature.shell.components.ShellBanner
 import com.vzaimno.app.feature.shell.components.ShellBannerState
 import com.vzaimno.app.feature.shell.components.ShellBannerTone
@@ -148,11 +150,26 @@ fun MainShellRoute(
                             val refreshSignal by backStackEntry.savedStateHandle
                                 .getStateFlow(AdsDestination.refreshResultKey, false)
                                 .collectAsStateWithLifecycle()
+                            val postCreateFilter by backStackEntry.savedStateHandle
+                                .getStateFlow<String?>(AdsDestination.postCreateFilterResultKey, null)
+                                .collectAsStateWithLifecycle()
+                            val postCreateMessage by backStackEntry.savedStateHandle
+                                .getStateFlow<String?>(AdsDestination.postCreateMessageResultKey, null)
+                                .collectAsStateWithLifecycle()
                             MyAnnouncementsRoute(
                                 onOpenDetails = { announcementId ->
                                     navController.navigate(AdsDestination.detailsRoute(announcementId))
                                 },
+                                onOpenCreate = {
+                                    navController.navigate(AdsDestination.createRoute())
+                                },
                                 refreshSignal = refreshSignal,
+                                postCreateFilter = postCreateFilter.toAdsFilterBucketOrNull(),
+                                postCreateMessage = postCreateMessage,
+                                onPostCreateHandled = {
+                                    backStackEntry.savedStateHandle[AdsDestination.postCreateFilterResultKey] = null as String?
+                                    backStackEntry.savedStateHandle[AdsDestination.postCreateMessageResultKey] = null as String?
+                                },
                                 onRefreshSignalHandled = {
                                     backStackEntry.savedStateHandle[AdsDestination.refreshResultKey] = false
                                 },
@@ -168,6 +185,24 @@ fun MainShellRoute(
                                     navController.previousBackStackEntry
                                         ?.savedStateHandle
                                         ?.set(AdsDestination.refreshResultKey, true)
+                                },
+                                onCreateAgain = { announcement ->
+                                    navController.navigate(AdsDestination.createRoute(announcement.id))
+                                },
+                            )
+                        }
+                        composable(
+                            route = AdsDestination.createRoutePattern,
+                            arguments = AdsDestination.createArguments,
+                        ) {
+                            AnnouncementCreateRoute(
+                                onBack = navController::navigateUp,
+                                onSubmitted = { filter, message ->
+                                    val homeEntry = navController.getBackStackEntry(AdsDestination.homeRoute)
+                                    homeEntry.savedStateHandle[AdsDestination.refreshResultKey] = true
+                                    homeEntry.savedStateHandle[AdsDestination.postCreateFilterResultKey] = filter.name
+                                    homeEntry.savedStateHandle[AdsDestination.postCreateMessageResultKey] = message
+                                    navController.popBackStack(AdsDestination.homeRoute, inclusive = false)
                                 },
                             )
                         }
@@ -302,4 +337,8 @@ private fun NavDestination?.isTopLevelDestination(): Boolean =
 
 private sealed class ShellSecondaryDestination(val route: String) {
     data object ChatPreview : ShellSecondaryDestination("shell/tab_chats/thread_preview")
+}
+
+private fun String?.toAdsFilterBucketOrNull(): AdsFilterBucket? = AdsFilterBucket.entries.firstOrNull { bucket ->
+    bucket.name == this
 }

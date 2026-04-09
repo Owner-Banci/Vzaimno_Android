@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class MyAnnouncementsViewModel @Inject constructor(
     private val announcementRepository: AnnouncementRepository,
+    private val adsAnnouncementCoordinator: AdsAnnouncementCoordinator,
     appConfig: AppConfig,
 ) : ViewModel() {
 
@@ -32,7 +33,17 @@ class MyAnnouncementsViewModel @Inject constructor(
 
     private var hasLoaded = false
     private var loadJob: Job? = null
-    private var announcements: List<Announcement> = emptyList()
+    private var serverAnnouncements: List<Announcement> = emptyList()
+    private var optimisticAnnouncements: List<Announcement> = emptyList()
+
+    init {
+        viewModelScope.launch {
+            adsAnnouncementCoordinator.optimisticAnnouncements.collect { announcements ->
+                optimisticAnnouncements = announcements.values.toList().sortedForAds()
+                syncRenderedAnnouncements()
+            }
+        }
+    }
 
     fun loadIfNeeded() {
         if (hasLoaded || loadJob?.isActive == true) return
@@ -40,7 +51,7 @@ class MyAnnouncementsViewModel @Inject constructor(
     }
 
     fun retry() {
-        load(showLoadingState = announcements.isEmpty())
+        load(showLoadingState = mergedAnnouncements().isEmpty())
     }
 
     fun refresh() {
@@ -52,6 +63,18 @@ class MyAnnouncementsViewModel @Inject constructor(
             state.copy(
                 selectedFilter = filter,
                 contentMessage = null,
+            )
+        }
+    }
+
+    fun applyPostCreateResult(
+        filter: AdsFilterBucket?,
+        message: String?,
+    ) {
+        _uiState.update { state ->
+            state.copy(
+                selectedFilter = filter ?: state.selectedFilter,
+                contentMessage = message ?: state.contentMessage,
             )
         }
     }
@@ -72,7 +95,7 @@ class MyAnnouncementsViewModel @Inject constructor(
 
             when (val result = announcementRepository.archiveAnnouncement(announcementId)) {
                 is ApiResult.Success -> {
-                    announcements = announcements
+                    serverAnnouncements = serverAnnouncements
                         .map { announcement ->
                             if (announcement.id == announcementId) {
                                 result.value
@@ -82,14 +105,10 @@ class MyAnnouncementsViewModel @Inject constructor(
                         }
                         .sortedForAds()
 
-                    _uiState.update { state ->
-                        state.copy(
-                            screenState = if (announcements.isEmpty()) AdsScreenState.Empty else AdsScreenState.Content,
-                            announcements = announcements,
-                            mutationState = null,
-                            contentMessage = null,
-                        )
-                    }
+                    syncRenderedAnnouncements(
+                        mutationState = null,
+                        contentMessage = null,
+                    )
                 }
 
                 is ApiResult.Failure -> {
@@ -121,19 +140,15 @@ class MyAnnouncementsViewModel @Inject constructor(
             when (val result = announcementRepository.deleteAnnouncement(announcementId)) {
                 is ApiResult.Success -> {
                     if (result.value) {
-                        announcements = announcements
+                        serverAnnouncements = serverAnnouncements
                             .filterNot { it.id == announcementId }
                             .sortedForAds()
                     }
 
-                    _uiState.update { state ->
-                        state.copy(
-                            screenState = if (announcements.isEmpty()) AdsScreenState.Empty else AdsScreenState.Content,
-                            announcements = announcements,
-                            mutationState = null,
-                            contentMessage = null,
-                        )
-                    }
+                    syncRenderedAnnouncements(
+                        mutationState = null,
+                        contentMessage = null,
+                    )
                 }
 
                 is ApiResult.Failure -> {
@@ -158,7 +173,7 @@ class MyAnnouncementsViewModel @Inject constructor(
         if (loadJob?.isActive == true) return
 
         loadJob = viewModelScope.launch {
-            val previousAnnouncements = announcements
+            val previousAnnouncements = mergedAnnouncements()
             _uiState.update { state ->
                 state.copy(
                     screenState = if (showLoadingState && previousAnnouncements.isEmpty()) {
@@ -176,16 +191,14 @@ class MyAnnouncementsViewModel @Inject constructor(
             when (val result = announcementRepository.fetchMyAnnouncements()) {
                 is ApiResult.Success -> {
                     hasLoaded = true
-                    announcements = result.value.sortedForAds()
-                    _uiState.update { state ->
-                        state.copy(
-                            screenState = if (announcements.isEmpty()) AdsScreenState.Empty else AdsScreenState.Content,
-                            isRefreshing = false,
-                            announcements = announcements,
-                            loadErrorMessage = null,
-                            contentMessage = null,
-                        )
-                    }
+                    serverAnnouncements = result.value.sortedForAds()
+                    adsAnnouncementCoordinator.reconcileWithServer(serverAnnouncements)
+                    syncRenderedAnnouncements(
+                        screenState = null,
+                        isRefreshing = false,
+                        loadErrorMessage = null,
+                        contentMessage = null,
+                    )
                 }
 
                 is ApiResult.Failure -> {
@@ -194,23 +207,58 @@ class MyAnnouncementsViewModel @Inject constructor(
                             state.copy(
                                 screenState = AdsScreenState.Error,
                                 isRefreshing = false,
-                                announcements = emptyList(),
+                                announcements = previousAnnouncements,
                                 loadErrorMessage = result.error.message,
                             )
                         }
                     } else {
                         hasLoaded = true
-                        _uiState.update { state ->
-                            state.copy(
-                                screenState = AdsScreenState.Content,
-                                isRefreshing = false,
-                                announcements = previousAnnouncements,
-                                contentMessage = result.error.message,
-                            )
-                        }
+                        syncRenderedAnnouncements(
+                            screenState = AdsScreenState.Content,
+                            isRefreshing = false,
+                            loadErrorMessage = null,
+                            contentMessage = result.error.message,
+                        )
                     }
                 }
             }
+        }
+    }
+
+    private fun mergedAnnouncements(): List<Announcement> {
+        val merged = linkedMapOf<String, Announcement>()
+        optimisticAnnouncements.forEach { announcement ->
+            merged[announcement.id] = announcement
+        }
+        serverAnnouncements.forEach { announcement ->
+            merged[announcement.id] = announcement
+        }
+        return merged.values.toList().sortedForAds()
+    }
+
+    private fun syncRenderedAnnouncements(
+        screenState: AdsScreenState? = null,
+        isRefreshing: Boolean = _uiState.value.isRefreshing,
+        loadErrorMessage: String? = _uiState.value.loadErrorMessage,
+        contentMessage: String? = _uiState.value.contentMessage,
+        mutationState: AnnouncementMutationState? = _uiState.value.mutationState,
+    ) {
+        val mergedAnnouncements = mergedAnnouncements()
+        val resolvedScreenState = screenState ?: when {
+            mergedAnnouncements.isEmpty() && !hasLoaded -> _uiState.value.screenState
+            mergedAnnouncements.isEmpty() -> AdsScreenState.Empty
+            else -> AdsScreenState.Content
+        }
+
+        _uiState.update { state ->
+            state.copy(
+                screenState = resolvedScreenState,
+                isRefreshing = isRefreshing,
+                announcements = mergedAnnouncements,
+                loadErrorMessage = loadErrorMessage,
+                contentMessage = contentMessage,
+                mutationState = mutationState,
+            )
         }
     }
 }

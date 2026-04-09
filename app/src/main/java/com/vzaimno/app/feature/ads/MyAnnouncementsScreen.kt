@@ -84,7 +84,11 @@ import java.time.Instant
 @Composable
 fun MyAnnouncementsRoute(
     onOpenDetails: (String) -> Unit,
+    onOpenCreate: () -> Unit,
     refreshSignal: Boolean,
+    postCreateFilter: AdsFilterBucket?,
+    postCreateMessage: String?,
+    onPostCreateHandled: () -> Unit,
     onRefreshSignalHandled: () -> Unit,
     viewModel: MyAnnouncementsViewModel = hiltViewModel(),
 ) {
@@ -101,9 +105,20 @@ fun MyAnnouncementsRoute(
         }
     }
 
+    LaunchedEffect(postCreateFilter, postCreateMessage) {
+        if (postCreateFilter != null || !postCreateMessage.isNullOrBlank()) {
+            viewModel.applyPostCreateResult(
+                filter = postCreateFilter,
+                message = postCreateMessage,
+            )
+            onPostCreateHandled()
+        }
+    }
+
     MyAnnouncementsScreen(
         state = state,
         onOpenDetails = onOpenDetails,
+        onOpenCreate = onOpenCreate,
         onRetry = viewModel::retry,
         onRefresh = viewModel::refresh,
         onFilterSelected = viewModel::selectFilter,
@@ -124,6 +139,7 @@ private data class PendingListAction(
 private fun MyAnnouncementsScreen(
     state: MyAnnouncementsUiState,
     onOpenDetails: (String) -> Unit,
+    onOpenCreate: () -> Unit,
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
     onFilterSelected: (AdsFilterBucket) -> Unit,
@@ -140,8 +156,6 @@ private fun MyAnnouncementsScreen(
     )
 
     var pendingAction by remember { mutableStateOf<PendingListAction?>(null) }
-    var showSoonDialog by remember { mutableStateOf(false) }
-
     pendingAction?.let { action ->
         val titleRes = if (action.type == AnnouncementMutationType.Archive) {
             R.string.ads_archive_dialog_title
@@ -186,23 +200,6 @@ private fun MyAnnouncementsScreen(
             dismissButton = {
                 TextButton(onClick = { pendingAction = null }) {
                     Text(text = stringResource(R.string.ads_action_cancel))
-                }
-            },
-        )
-    }
-
-    if (showSoonDialog) {
-        AlertDialog(
-            onDismissRequest = { showSoonDialog = false },
-            title = {
-                Text(text = stringResource(R.string.ads_create_entry_title))
-            },
-            text = {
-                Text(text = stringResource(R.string.ads_create_entry_message))
-            },
-            confirmButton = {
-                TextButton(onClick = { showSoonDialog = false }) {
-                    Text(text = stringResource(R.string.ads_action_ok))
                 }
             },
         )
@@ -363,7 +360,7 @@ private fun MyAnnouncementsScreen(
                 if (state.screenState != AdsScreenState.Loading) {
                     item {
                         CreateAnnouncementEntryCard(
-                            onClick = { showSoonDialog = true },
+                            onClick = onOpenCreate,
                         )
                     }
                 }

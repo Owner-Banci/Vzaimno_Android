@@ -137,10 +137,119 @@
     <string name="ads_image_preview_description">Предпросмотр фото объявления</string>
 
     <string name="ads_create_entry_title">Новое объявление</string>
-    <string name="ads_create_entry_caption">Вход в новый create flow уже зарезервирован в интерфейсе, но сам сценарий откроем на следующем этапе.</string>
-    <string name="ads_create_entry_message">Полноценное создание объявления подключим следующим этапом. Пока здесь оставлен аккуратный вход в будущий сценарий.</string>
-    <string name="ads_create_entry_button">Открыть вход в создание</string>
+    <string name="ads_create_entry_caption">Соберите объявление в одной структурированной форме, добавьте фото и сразу отправьте его в публикацию.</string>
+    <string name="ads_create_entry_message">Создание объявления уже доступно в полном виде.</string>
+    <string name="ads_create_entry_button">Создать объявление</string>
     <string name="ads_entry_soon">Скоро</string>
+
+    <string name="ads_create_title">Создать объявление</string>
+    <string name="ads_create_again_title">Создать на основе объявления</string>
+    <string name="ads_create_submit">Опубликовать</string>
+    <string name="ads_create_hero_title">Новая заявка без лишних шагов</string>
+    <string name="ads_create_hero_body">Форма собирает сразу актуальный payload V2: действие, маршрут, бюджет, условия, контакты и медиа в одном спокойном сценарии.</string>
+    <string name="ads_create_again_hero_title">Новая публикация на основе готового объявления</string>
+    <string name="ads_create_again_hero_body">Мы перенесём основные поля в новую форму, чтобы заново собрать объявление без ручного переписывания.</string>
+    <string name="ads_create_again_hero_body_with_title">Источник для prefill: «%1$s». Проверьте поля, при необходимости поправьте маршрут и бюджет, а затем отправьте новую публикацию.</string>
+    <string name="ads_create_prefill_loading">Подтягиваем данные объявления для повторного создания…</string>
+    <string name="ads_create_prefill_media_hint">Поля перенесены, а фотографии нужно выбрать заново через системный пикер.</string>
+
+    <string name="ads_create_section_main">Основа объявления</string>
+    <string name="ads_create_section_object">Что именно нужно</string>
+    <string name="ads_create_section_route">Маршрут и адреса</string>
+    <string name="ads_create_section_budget">Бюджет и время</string>
+    <string name="ads_create_section_attributes">Условия выполнения</string>
+    <string name="ads_create_section_contacts">Контакты</string>
+
+    <string name="ads_create_main_group_delivery">Доставка</string>
+    <string name="ads_create_main_group_help">Помощь</string>
+    <string name="ads_create_action_label">Тип задачи</string>
+    <string name="ads_create_title_placeholder">Например: Забрать заказ и привезти к дому</string>
+    <string name="ads_create_notes_placeholder">Коротко опишите детали, ограничения и полезные нюансы для исполнителя.</string>
+    <string name="ads_create_task_brief_placeholder_help">Например: настроить роутер и проверить скорость</string>
+    <string name="ads_create_task_brief_placeholder_other">Например: быстро забрать документы и передать их в офис</string>
+    <string name="ads_create_task_brief_placeholder_generic">Коротко уточните задачу</string>
+
+    <string name="ads_create_source_placeholder_buy">Адрес магазина, аптеки или точки покупки</string>
+    <string name="ads_create_source_placeholder_ride">Откуда нужно забрать пассажира</string>
+    <string name="ads_create_source_placeholder_help">Где нужна помощь</string>
+    <string name="ads_create_source_placeholder_generic">Укажите адрес или точку старта</string>
+    <string name="ads_create_destination_placeholder_ride">Куда нужно подвезти</string>
+    <string name="ads_create_destination_placeholder_carry">Куда нужно перенести вещь</string>
+    <string name="ads_create_destination_placeholder_generic">Укажите адрес назначения</string>
+
+    <string name="ads_create_budget_mode_fixed">Сумма</string>
+    <string name="ads_create_budget_mode_range">Диапазон</string>
+    <string name="ads_create_budget_amount_label">Сколько готовы заплатить</string>
+    <string name="ads_create_budget_amount_placeholder">Например: 900</string>
+    <string name="ads_create_budget_min_label">От</string>
+    <string name="ads_create_budget_min_placeholder">Мин.</string>
+    <string name="ads_create_budget_max_label">До</string>
+    <string name="ads_create_budget_max_placeholder">Макс.</string>
+    <string name="ads_create_duration_placeholder">Минут</string>
+    <string name="ads_create_waiting_placeholder">Сколько ждать</string>
+    <string name="ads_create_floor_label">Этаж</string>
+    <string name="ads_create_floor_placeholder">Например: 7</string>
+
+    <string name="ads_create_contact_name_label">Контактное имя</string>
+    <string name="ads_create_contact_name_placeholder">Как к вам обращаться</string>
+    <string name="ads_create_contact_phone_label">Телефон</string>
+    <string name="ads_create_contact_phone_placeholder">Например: +7 999 123-45-67</string>
+    <string name="ads_create_contact_method_label">Как удобнее связаться</string>
+    <string name="ads_create_audience_label">Для кого задача</string>
+
+    <string name="ads_create_contact_method_calls_and_messages">Звонки и сообщения</string>
+    <string name="ads_create_contact_method_messages_only">Только сообщения</string>
+    <string name="ads_create_contact_method_calls_only">Только звонки</string>
+    <string name="ads_create_audience_individuals">Частные лица</string>
+    <string name="ads_create_audience_business">Бизнес</string>
+    <string name="ads_create_audience_both">Все исполнители</string>
+
+    <string name="ads_create_item_groceries">Продукты</string>
+    <string name="ads_create_item_documents">Документы</string>
+    <string name="ads_create_item_electronics">Техника</string>
+    <string name="ads_create_item_fragile">Хрупкое</string>
+    <string name="ads_create_item_bags">Пакеты и сумки</string>
+    <string name="ads_create_item_bulky">Крупная вещь</string>
+    <string name="ads_create_item_other">Другое</string>
+
+    <string name="ads_create_purchase_groceries">Продукты</string>
+    <string name="ads_create_purchase_medicine">Лекарства</string>
+    <string name="ads_create_purchase_clothing">Одежда</string>
+    <string name="ads_create_purchase_electronics">Техника</string>
+    <string name="ads_create_purchase_home_goods">Для дома</string>
+    <string name="ads_create_purchase_other">Другое</string>
+
+    <string name="ads_create_help_consultation">Консультация</string>
+    <string name="ads_create_help_setup_device">Настроить устройство</string>
+    <string name="ads_create_help_install_or_connect">Подключить или установить</string>
+    <string name="ads_create_help_minor_repair">Мелкий ремонт</string>
+    <string name="ads_create_help_diagnose">Диагностика</string>
+    <string name="ads_create_help_other">Другое</string>
+
+    <string name="ads_create_media_caption">Добавьте фотографии, если они помогают понять задачу или предмет.</string>
+    <string name="ads_create_media_limit">До %1$d изображений через системный пикер</string>
+    <string name="ads_create_media_button">Выбрать фото</string>
+
+    <string name="ads_create_error_action_required">Выберите тип задачи</string>
+    <string name="ads_create_error_title_required">Введите название объявления</string>
+    <string name="ads_create_error_budget_amount_required">Укажите сумму</string>
+    <string name="ads_create_error_budget_number">Введите сумму цифрами</string>
+    <string name="ads_create_error_budget_range_required">Укажите минимум, максимум или оба значения</string>
+    <string name="ads_create_error_budget_range_order">Максимум не может быть меньше минимума</string>
+    <string name="ads_create_error_source_address_required">Укажите адрес старта</string>
+    <string name="ads_create_error_destination_address_required">Укажите адрес назначения</string>
+    <string name="ads_create_error_addresses_must_differ">Адреса старта и назначения не должны совпадать</string>
+    <string name="ads_create_error_task_brief_required">Коротко уточните задачу</string>
+    <string name="ads_create_error_contact_phone_invalid">Проверьте номер телефона</string>
+    <string name="ads_create_error_minutes_invalid">Введите время в минутах</string>
+    <string name="ads_create_error_waiting_required">Укажите, сколько можно подождать</string>
+    <string name="ads_create_error_floor_required">Укажите этаж</string>
+    <string name="ads_create_error_floor_invalid">Проверьте номер этажа</string>
+
+    <string name="ads_create_success_active">Объявление опубликовано и уже появилось в активных.</string>
+    <string name="ads_create_success_review">Объявление отправлено на проверку и появилось в разделе действий.</string>
+    <string name="ads_create_warning_media_not_uploaded">Объявление создано, но фото пока не удалось подготовить к загрузке.</string>
+    <string name="ads_create_warning_media_with_reason">Объявление создано, но фото пока не загрузились: %1$s</string>
 
     <string name="ads_back">Назад</string>
     <string name="ads_details_title">Детали объявления</string>
@@ -197,9 +306,109 @@
     <string name="ads_reopen_entry_message">Возврат объявления из архива подключим отдельным шагом. Сейчас здесь оставлен только entry point для будущего сценария.</string>
 
     <string name="ads_create_again_entry_title">Создать заново</string>
-    <string name="ads_create_again_entry_caption">Повторная публикация на основе этого объявления появится дальше как отдельный сценарий.</string>
-    <string name="ads_create_again_entry_button">Открыть вход в повтор</string>
-    <string name="ads_create_again_entry_message">Повторное создание по существующему объявлению оставлено на следующий этап. Сейчас доступен только интерфейсный entry point.</string>
+    <string name="ads_create_again_entry_caption">Откройте новую форму с уже заполненными ключевыми полями текущего объявления.</string>
+    <string name="ads_create_again_entry_button">Создать на основе этого</string>
+    <string name="ads_create_again_entry_message">Повторное создание объявления уже доступно.</string>
+
+    <string name="discovery_title">Публичные объявления</string>
+    <string name="discovery_subtitle">Ищите поручения на карте или в списке, настраивайте выдачу и откликайтесь прямо из компактной карточки деталей.</string>
+    <string name="discovery_loading_title">Подбираем объявления</string>
+    <string name="discovery_loading_message">Загружаем публичную выдачу и готовим карту с актуальными задачами.</string>
+    <string name="discovery_error_title">Не удалось обновить discovery</string>
+    <string name="discovery_retry">Повторить</string>
+    <string name="discovery_search_placeholder">Поиск по названию, адресу и параметрам</string>
+    <string name="discovery_clear_search">Очистить поиск</string>
+    <string name="discovery_switch_to_list">Открыть список</string>
+    <string name="discovery_switch_to_map">Открыть карту</string>
+    <string name="discovery_results_summary">Показано %1$d из %2$d</string>
+    <string name="discovery_map_points_summary">На карте %1$d точек</string>
+    <string name="discovery_filters_button">Фильтры</string>
+    <string name="discovery_filters_with_count">Фильтры • %1$d</string>
+    <string name="discovery_clear_filters">Сбросить поиск и фильтры</string>
+    <string name="discovery_message_dismiss">Скрыть</string>
+    <string name="discovery_refresh">Обновить выдачу</string>
+    <string name="discovery_empty_title">Ничего не найдено</string>
+    <string name="discovery_empty_message">Попробуйте смягчить фильтры, изменить запрос или переключиться на карту.</string>
+    <string name="discovery_empty_map_message">По текущим условиям нашлись объявления, но у них пока нет точки для отображения на карте.</string>
+    <string name="discovery_map_unavailable_title">Карта пока недоступна</string>
+    <string name="discovery_map_unavailable_message">Список объявлений уже работает. Карту можно включить после подключения Google Maps API key в локальной конфигурации.</string>
+
+    <string name="discovery_category_delivery">Доставка</string>
+    <string name="discovery_category_help">Помощь</string>
+    <string name="discovery_category_generic">Объявление</string>
+
+    <string name="discovery_action_pickup">Забрать</string>
+    <string name="discovery_action_buy">Купить</string>
+    <string name="discovery_action_carry">Перенести</string>
+    <string name="discovery_action_ride">Подвезти</string>
+    <string name="discovery_action_pro_help">Профи</string>
+    <string name="discovery_action_other">Другое</string>
+
+    <string name="discovery_urgency_now">Сейчас</string>
+    <string name="discovery_urgency_today">Сегодня</string>
+    <string name="discovery_urgency_scheduled">Ко времени</string>
+    <string name="discovery_urgency_flexible">Не срочно</string>
+
+    <string name="discovery_filter_category_title">Категория</string>
+    <string name="discovery_filter_urgency_title">Срочность</string>
+    <string name="discovery_filter_budget_title">Бюджет</string>
+    <string name="discovery_filter_budget_min">От</string>
+    <string name="discovery_filter_budget_max">До</string>
+    <string name="discovery_filter_preferences_title">Дополнительно</string>
+    <string name="discovery_filter_with_photo">Только с фото</string>
+    <string name="discovery_filter_requires_vehicle">Нужен транспорт</string>
+    <string name="discovery_filter_needs_loader">Нужен грузчик</string>
+    <string name="discovery_filter_contactless">Бесконтактно</string>
+    <string name="discovery_filters_title">Точная настройка</string>
+    <string name="discovery_filters_subtitle">Оставьте только те объявления, которые действительно подходят под ваш сценарий.</string>
+    <string name="discovery_reset_filters">Сбросить</string>
+    <string name="discovery_apply_filters">Показать результаты</string>
+
+    <string name="discovery_gate_available_label">Можно откликнуться</string>
+    <string name="discovery_gate_available_message">Объявление открыто для новых предложений.</string>
+    <string name="discovery_gate_own_label">Ваше объявление</string>
+    <string name="discovery_gate_own_title">Это ваше объявление</string>
+    <string name="discovery_gate_own_message">С этой поверхности мы не отправляем отклик на собственные объявления.</string>
+    <string name="discovery_gate_auth_label">Нужен вход</string>
+    <string name="discovery_gate_auth_title">Для отклика нужен аккаунт</string>
+    <string name="discovery_gate_auth_message">Экран останется доступным и без авторизации, но отправка отклика требует активной сессии.</string>
+    <string name="discovery_gate_unavailable_label">Отклики закрыты</string>
+    <string name="discovery_gate_unavailable_title">Отклики сейчас недоступны</string>
+    <string name="discovery_gate_unavailable_message">По этому объявлению уже нельзя отправить новое предложение.</string>
+    <string name="discovery_gate_responded_label">Отклик отправлен</string>
+    <string name="discovery_gate_responded_title">Отклик уже отправлен</string>
+    <string name="discovery_gate_responded_message">Мы сохранили локальный success state и не дублируем повторную отправку из этой сессии.</string>
+
+    <string name="discovery_no_photo">Без фото</string>
+    <string name="discovery_open_details">Подробнее</string>
+    <string name="discovery_show_on_map">На карте</string>
+    <string name="discovery_address_from">Откуда: %1$s</string>
+    <string name="discovery_address_to">Куда: %1$s</string>
+    <string name="discovery_address_missing">Адрес уточняется в деталях объявления.</string>
+
+    <string name="discovery_details_addresses">Адреса</string>
+    <string name="discovery_details_description">Описание</string>
+    <string name="discovery_details_contacts">Контакты</string>
+    <string name="discovery_contact_name">Имя</string>
+    <string name="discovery_contact_method">Связь</string>
+    <string name="discovery_contact_phone">Телефон</string>
+    <string name="discovery_contact_phone_provided">Контакт указан в объявлении</string>
+    <string name="discovery_contact_method_calls_and_messages">Звонки и сообщения</string>
+    <string name="discovery_contact_method_messages_only">Только сообщения</string>
+    <string name="discovery_contact_method_calls_only">Только звонки</string>
+    <string name="discovery_contact_method_unknown">Уточняется в деталях</string>
+
+    <string name="discovery_offer_message_label">Сообщение к отклику</string>
+    <string name="discovery_offer_message_placeholder">Напишите короткое сообщение заказчику, если это поможет быстрее договориться.</string>
+    <string name="discovery_offer_custom_price">Своя цена</string>
+    <string name="discovery_offer_quick_price">Быстрый отклик • %1$d ₽</string>
+    <string name="discovery_offer_custom_title">Своя цена</string>
+    <string name="discovery_offer_custom_field">Предложенная сумма</string>
+    <string name="discovery_offer_custom_error">Укажите сумму цифрами</string>
+    <string name="discovery_offer_send">Отправить</string>
+    <string name="discovery_offer_cancel">Отмена</string>
+    <string name="discovery_offer_success_title">Отклик отправлен</string>
+    <string name="discovery_offer_success_message">Заказчик увидит ваше предложение у себя в объявлении. Мы оставили вас в discovery и локально обновили карточку.</string>
 
     <string name="shell_chats_title">Чаты</string>
     <string name="shell_chats_subtitle">Коммуникации по задачам, маршрутам и поддержке будут собраны здесь в одном спокойном рабочем потоке.</string>
