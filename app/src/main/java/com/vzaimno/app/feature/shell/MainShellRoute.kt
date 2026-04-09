@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavDestination
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -43,6 +44,9 @@ import com.vzaimno.app.feature.shell.components.ShellBannerTone
 import com.vzaimno.app.feature.shell.navigation.LocalShellBottomBarVisibilityController
 import com.vzaimno.app.feature.shell.navigation.ShellTabDestination
 import com.vzaimno.app.feature.shell.navigation.rememberShellBottomBarVisibilityController
+import com.vzaimno.app.feature.profile.ProfileDestination
+import com.vzaimno.app.feature.profile.ProfileEditRoute
+import com.vzaimno.app.feature.profile.ProfileReviewsRoute
 import com.vzaimno.app.feature.shell.screens.AnnouncementsShellScreen
 import com.vzaimno.app.feature.shell.screens.ChatPreviewScreen
 import com.vzaimno.app.feature.shell.screens.ChatsShellScreen
@@ -165,13 +169,45 @@ fun MainShellRoute(
                         route = ShellTabDestination.Profile.graphRoute,
                         startDestination = ShellTabDestination.Profile.rootRoute,
                     ) {
-                        composable(route = ShellTabDestination.Profile.rootRoute) {
+                        composable(route = ProfileDestination.homeRoute) { backStackEntry ->
+                            val refreshSignal by backStackEntry.savedStateHandle
+                                .getStateFlow(ProfileDestination.refreshResultKey, false)
+                                .collectAsStateWithLifecycle()
                             ProfileShellScreen(
                                 sessionState = sessionState,
                                 isOnline = isOnline,
-                                isLoggingOut = isLoggingOut,
                                 onRetryRestore = onRetryRestore,
+                                onOpenEdit = {
+                                    navController.navigate(ProfileDestination.editRoute)
+                                },
+                                onOpenReviews = { role ->
+                                    navController.navigate(ProfileDestination.reviewsRoute(role))
+                                },
+                                refreshSignal = refreshSignal,
+                                onRefreshSignalHandled = {
+                                    backStackEntry.savedStateHandle[ProfileDestination.refreshResultKey] = false
+                                },
+                            )
+                        }
+                        composable(route = ProfileDestination.editRoute) {
+                            ProfileEditRoute(
+                                onBack = navController::navigateUp,
+                                onSaved = {
+                                    navController.previousBackStackEntry
+                                        ?.savedStateHandle
+                                        ?.set(ProfileDestination.refreshResultKey, true)
+                                    navController.navigateUp()
+                                },
                                 onLogout = onLogout,
+                                isLoggingOut = isLoggingOut,
+                            )
+                        }
+                        composable(
+                            route = ProfileDestination.reviewsRoutePattern,
+                            arguments = ProfileDestination.reviewsArguments,
+                        ) {
+                            ProfileReviewsRoute(
+                                onBack = navController::navigateUp,
                             )
                         }
                     }

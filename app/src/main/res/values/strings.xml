@@ -97,4 +97,81 @@
     <string name="shell_profile_feature_connectivity_offline">Сеть недоступна. Приложение сохранит контекст и продолжит работу, где это возможно.</string>
     <string name="shell_profile_logout">Выйти из аккаунта</string>
     <string name="shell_profile_logout_loading">Выходим...</string>
+
+    <string name="profile_screen_title">Профиль</string>
+    <string name="profile_screen_subtitle">Держите под рукой главное о себе, быстрый вход в редактирование и реальные отзывы от заказчиков и исполнителей.</string>
+    <string name="profile_primary_contact_missing">Контакт пока не указан</string>
+    <string name="profile_edit_short">Изм.</string>
+
+    <string name="profile_metric_rating">Рейтинг</string>
+    <string name="profile_metric_rating_count">Оценок</string>
+    <string name="profile_metric_completed_count">Выполнено</string>
+    <string name="profile_metric_cancelled_count">Отменено</string>
+
+    <string name="profile_account_section_title">Настройки аккаунта</string>
+    <string name="profile_account_edit_title">Редактировать профиль</string>
+    <string name="profile_account_edit_subtitle">Обновите имя, описание, город и удобный адрес без лишних шагов.</string>
+    <string name="profile_account_session_title">Статус сессии</string>
+    <string name="profile_session_verified">Подтверждена сервером</string>
+    <string name="profile_session_cached">Локально сохранена</string>
+    <string name="profile_account_network_title">Подключение</string>
+    <string name="profile_network_online">Сеть доступна</string>
+    <string name="profile_network_offline">Нет подключения к интернету</string>
+    <string name="profile_location_missing_title">Город пока не указан</string>
+    <string name="profile_location_missing_subtitle">Добавьте адрес, чтобы быстрее оформлять задания и договорённости.</string>
+
+    <string name="profile_support_section_title">Поддержка</string>
+    <string name="profile_support_help_title">Помощь</string>
+    <string name="profile_support_help_subtitle">Ответы на частые вопросы и связь с поддержкой появятся здесь.</string>
+    <string name="profile_support_rules_title">Правила сервиса</string>
+    <string name="profile_support_rules_subtitle">Условия использования и важные правила будут доступны в этом разделе.</string>
+    <string name="profile_secondary_soon">Скоро</string>
+
+    <string name="profile_reviews_section_title">Отзывы</string>
+    <string name="profile_reviews_action_all">Все отзывы</string>
+    <string name="profile_reviews_preview_label">Как исполнитель</string>
+    <string name="profile_reviews_empty_title">Пока нет отзывов</string>
+    <string name="profile_reviews_empty_performer">Как только вас оценят как исполнителя, отзывы появятся в этом блоке.</string>
+    <string name="profile_reviews_empty_customer">Как только вас оценят как заказчика, отзывы появятся в этом блоке.</string>
+    <string name="profile_reviews_error_title">Не удалось загрузить отзывы</string>
+    <string name="profile_reviews_inline_error_title">Не удалось обновить отзывы</string>
+    <string name="profile_reviews_screen_title">Все отзывы</string>
+    <string name="profile_reviews_role_performer">Исполнитель</string>
+    <string name="profile_reviews_role_customer">Заказчик</string>
+    <string name="profile_reviews_summary_performer">Рейтинг как исполнителя</string>
+    <string name="profile_reviews_summary_customer">Рейтинг как заказчика</string>
+    <string name="profile_reviews_summary_count">%1$d оценок</string>
+
+    <string name="profile_error_title">Не удалось загрузить профиль</string>
+    <string name="profile_inline_error_title">Не удалось обновить профиль</string>
+    <string name="profile_back">Назад</string>
+
+    <string name="profile_edit_title">Редактировать профиль</string>
+    <string name="profile_edit_save">Сохранить</string>
+    <string name="profile_edit_error_title">Не удалось открыть редактирование</string>
+    <string name="profile_edit_section_identity">Основное</string>
+    <string name="profile_edit_display_name_label">Имя</string>
+    <string name="profile_edit_display_name_placeholder">Введите имя</string>
+    <string name="profile_edit_contact_title">Основной контакт</string>
+    <string name="profile_edit_section_about">О себе</string>
+    <string name="profile_edit_city_label">Город</string>
+    <string name="profile_edit_city_placeholder">Например, Москва</string>
+    <string name="profile_edit_bio_label">Описание</string>
+    <string name="profile_edit_bio_placeholder">Расскажите, как вам удобнее работать и что важно знать другим пользователям.</string>
+    <string name="profile_edit_bio_counter">%1$d/%2$d</string>
+    <string name="profile_edit_section_location">Самый удобный адрес</string>
+    <string name="profile_edit_address_label">Адрес</string>
+    <string name="profile_edit_address_placeholder">Например, Москва, ул. Тверская, 1</string>
+    <string name="profile_edit_address_caption">Если адрес уже был сохранён, мы бережно сохраним его координаты даже без отдельного редактирования на этом экране.</string>
+    <string name="profile_edit_section_stats">Статистика</string>
+    <string name="profile_edit_save_error_title">Сохранить изменения не получилось</string>
+    <string name="profile_edit_validation_name">Укажите имя не короче 2 символов.</string>
+    <string name="profile_edit_validation_bio">Описание не должно превышать %1$d символов.</string>
+    <string name="profile_edit_validation_address">Адрес не должен превышать %1$d символов.</string>
+
+    <string name="profile_logout_action">Выйти из аккаунта</string>
+    <string name="profile_logout_dialog_title">Выйти из аккаунта?</string>
+    <string name="profile_logout_dialog_message">Приложение вернёт вас на экран входа. Сессию можно будет восстановить только после нового входа.</string>
+    <string name="profile_logout_confirm">Выйти</string>
+    <string name="profile_logout_cancel">Отмена</string>
 </resources>
