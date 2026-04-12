@@ -20,7 +20,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.Policy
 import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -154,25 +157,11 @@ private fun ProfileHomeScreen(
                         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
                     ) {
                         item {
-                            Column(
-                                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.shell_brand_caption),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                                Text(
-                                    text = stringResource(R.string.profile_screen_title),
-                                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                )
-                                Text(
-                                    text = stringResource(R.string.profile_screen_subtitle),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
+                            Text(
+                                text = stringResource(R.string.profile_screen_title),
+                                style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onBackground,
+                            )
                         }
 
                         if (!state.contentMessage.isNullOrBlank()) {
@@ -195,6 +184,43 @@ private fun ProfileHomeScreen(
                                         onOpenReviews(ReviewRole.Performer)
                                     },
                                 )
+                            }
+
+                            item {
+                                ProfileSectionCard(
+                                    title = stringResource(R.string.profile_settings_section_title),
+                                ) {
+                                    Column(
+                                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
+                                    ) {
+                                        ProfileInfoRow(
+                                            icon = Icons.Outlined.DarkMode,
+                                            title = stringResource(R.string.profile_settings_dark_theme),
+                                            subtitle = stringResource(R.string.profile_settings_dark_theme_subtitle),
+                                            trailing = {
+                                                ProfileSecondaryBadge(labelRes = R.string.profile_secondary_soon)
+                                            },
+                                        )
+                                        ProfileDivider()
+                                        ProfileInfoRow(
+                                            icon = Icons.Outlined.Notifications,
+                                            title = stringResource(R.string.profile_settings_notifications),
+                                            subtitle = stringResource(R.string.profile_settings_notifications_subtitle),
+                                            trailing = {
+                                                ProfileSecondaryBadge(labelRes = R.string.profile_secondary_soon)
+                                            },
+                                        )
+                                        ProfileDivider()
+                                        ProfileInfoRow(
+                                            icon = Icons.Outlined.Payments,
+                                            title = stringResource(R.string.profile_settings_payments),
+                                            subtitle = stringResource(R.string.profile_settings_payments_subtitle),
+                                            trailing = {
+                                                ProfileSecondaryBadge(labelRes = R.string.profile_secondary_soon)
+                                            },
+                                        )
+                                    }
+                                }
                             }
 
                             item {

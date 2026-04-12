@@ -62,7 +62,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
@@ -147,14 +146,6 @@ private fun MyAnnouncementsScreen(
     onDelete: (String) -> Unit,
     onDismissInlineMessage: () -> Unit,
 ) {
-    val backgroundBrush = Brush.verticalGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f),
-            MaterialTheme.colorScheme.background,
-            MaterialTheme.colorScheme.background,
-        ),
-    )
-
     var pendingAction by remember { mutableStateOf<PendingListAction?>(null) }
     pendingAction?.let { action ->
         val titleRes = if (action.type == AnnouncementMutationType.Archive) {
@@ -208,7 +199,7 @@ private fun MyAnnouncementsScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(backgroundBrush),
+            .background(MaterialTheme.colorScheme.background),
     ) {
         PullToRefreshBox(
             modifier = Modifier.fillMaxSize(),
@@ -232,25 +223,11 @@ private fun MyAnnouncementsScreen(
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
             ) {
                 item {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-                    ) {
-                        Text(
-                            text = stringResource(R.string.shell_brand_caption),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        Text(
-                            text = stringResource(R.string.ads_screen_title),
-                            style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                            color = MaterialTheme.colorScheme.onBackground,
-                        )
-                        Text(
-                            text = stringResource(R.string.ads_screen_subtitle),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
+                    Text(
+                        text = stringResource(R.string.ads_screen_title),
+                        style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
                 }
 
                 if (state.screenState != AdsScreenState.Error) {
@@ -373,14 +350,14 @@ private fun MyAnnouncementsScreen(
 private fun AdsSummaryCard(summary: AdsSummaryUi) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(30.dp),
+        shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+            containerColor = MaterialTheme.colorScheme.surface,
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(
-            modifier = Modifier.padding(MaterialTheme.spacing.xLarge),
+            modifier = Modifier.padding(MaterialTheme.spacing.large),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
         ) {
             Text(
@@ -396,6 +373,7 @@ private fun AdsSummaryCard(summary: AdsSummaryUi) {
                     modifier = Modifier.weight(1f),
                     title = stringResource(R.string.ads_filter_active),
                     value = summary.activeCount,
+                    accent = true,
                 )
                 AdsStatTile(
                     modifier = Modifier.weight(1f),
@@ -417,11 +395,16 @@ private fun AdsStatTile(
     title: String,
     value: Int,
     modifier: Modifier = Modifier,
+    accent: Boolean = false,
 ) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(22.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+        shape = RoundedCornerShape(18.dp),
+        color = if (accent) {
+            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f)
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+        },
     ) {
         Column(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 16.dp),
@@ -430,7 +413,11 @@ private fun AdsStatTile(
             Text(
                 text = title,
                 style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (accent) {
+                    MaterialTheme.colorScheme.tertiary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
             )
             Text(
                 text = value.toString(),
@@ -494,11 +481,11 @@ private fun AnnouncementListCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(30.dp),
+        shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+            containerColor = MaterialTheme.colorScheme.surface,
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Row(
             modifier = Modifier

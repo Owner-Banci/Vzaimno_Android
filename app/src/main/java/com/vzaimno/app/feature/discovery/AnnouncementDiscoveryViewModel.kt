@@ -34,7 +34,7 @@ class AnnouncementDiscoveryViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(
         DiscoveryUiState(
             apiBaseUrl = appConfig.normalizedApiBaseUrl,
-            isMapConfigured = BuildConfig.GOOGLE_MAPS_API_KEY.isNotBlank(),
+            isMapConfigured = BuildConfig.YANDEX_MAPKIT_API_KEY.isNotBlank(),
         ),
     )
     val uiState: StateFlow<DiscoveryUiState> = _uiState.asStateFlow()

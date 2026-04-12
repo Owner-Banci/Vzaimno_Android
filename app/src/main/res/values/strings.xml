@@ -32,6 +32,15 @@
     <string name="shell_map_feature_filters_title">Фильтры по времени и типу</string>
     <string name="shell_map_feature_filters_body">Появятся быстрые условия для ближайших задач, маршрутов по пути и отдельных категорий объявлений.</string>
 
+    <string name="route_screen_title">Маршрут</string>
+    <string name="route_role_performer">Исполнитель</string>
+    <string name="route_role_customer">Заказчик</string>
+    <string name="route_accepted_count">По пути: %1$d/%2$d приняты</string>
+    <string name="route_map_unavailable">Карта маршрута пока недоступна</string>
+    <string name="route_tasks_section_title">Задания</string>
+    <string name="route_tasks_empty_title">Заданий пока нет</string>
+    <string name="route_tasks_empty_subtitle">Когда вы примете задание или создадите маршрут, задачи появятся здесь.</string>
+
     <string name="shell_route_title">Маршрут дня</string>
     <string name="shell_route_subtitle">Экран подготовлен под последовательность точек, временные окна и сборку задач по пути.</string>
     <string name="shell_route_hero_title">Маршрут станет главным рабочим сценарием</string>
@@ -331,7 +340,14 @@
     <string name="discovery_empty_message">Попробуйте смягчить фильтры, изменить запрос или переключиться на карту.</string>
     <string name="discovery_empty_map_message">По текущим условиям нашлись объявления, но у них пока нет точки для отображения на карте.</string>
     <string name="discovery_map_unavailable_title">Карта пока недоступна</string>
-    <string name="discovery_map_unavailable_message">Список объявлений уже работает. Карту можно включить после подключения Google Maps API key в локальной конфигурации.</string>
+    <string name="discovery_map_unavailable_message">Список объявлений уже работает. Карту можно включить после подключения Yandex MapKit API key в локальной конфигурации.</string>
+
+    <string name="discovery_zoom_in">Приблизить</string>
+    <string name="discovery_zoom_out">Отдалить</string>
+    <string name="discovery_my_location">Моё местоположение</string>
+    <string name="discovery_pan_mode">Режим перемещения</string>
+    <string name="discovery_filters_and_route">Фильтры и маршрут</string>
+    <string name="discovery_filters_and_route_subtitle">Настройте выдачу под ваш сценарий</string>
 
     <string name="discovery_category_delivery">Доставка</string>
     <string name="discovery_category_help">Помощь</string>
@@ -410,6 +426,10 @@
     <string name="discovery_offer_success_title">Отклик отправлен</string>
     <string name="discovery_offer_success_message">Заказчик увидит ваше предложение у себя в объявлении. Мы оставили вас в discovery и локально обновили карточку.</string>
 
+    <string name="chats_empty_title">У вас пока нет чатов</string>
+    <string name="chats_empty_subtitle">Здесь появятся переписки по задачам и маршрутам, когда вы начнёте работу с объявлениями.</string>
+    <string name="chats_contact_support">Связаться с поддержкой</string>
+
     <string name="shell_chats_title">Чаты</string>
     <string name="shell_chats_subtitle">Коммуникации по задачам, маршрутам и поддержке будут собраны здесь в одном спокойном рабочем потоке.</string>
     <string name="shell_chats_hero_title">Чаты готовы стать рабочим центром коммуникации</string>
@@ -457,6 +477,14 @@
     <string name="profile_metric_rating_count">Оценок</string>
     <string name="profile_metric_completed_count">Выполнено</string>
     <string name="profile_metric_cancelled_count">Отменено</string>
+
+    <string name="profile_settings_section_title">Настройки</string>
+    <string name="profile_settings_dark_theme">Тёмная тема</string>
+    <string name="profile_settings_dark_theme_subtitle">Следовать системной теме устройства</string>
+    <string name="profile_settings_notifications">Уведомления</string>
+    <string name="profile_settings_notifications_subtitle">Управление push-уведомлениями и звуками</string>
+    <string name="profile_settings_payments">Оплата</string>
+    <string name="profile_settings_payments_subtitle">Способы оплаты и история транзакций</string>
 
     <string name="profile_account_section_title">Настройки аккаунта</string>
     <string name="profile_account_edit_title">Редактировать профиль</string>

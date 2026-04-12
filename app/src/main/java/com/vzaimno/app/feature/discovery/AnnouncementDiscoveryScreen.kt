@@ -1,5 +1,11 @@
 package com.vzaimno.app.feature.discovery
 
+import android.view.ViewGroup
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -34,13 +40,17 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.automirrored.outlined.Send
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.FilterAlt
 import androidx.compose.material.icons.outlined.ImageNotSupported
 import androidx.compose.material.icons.outlined.Inventory2
-import androidx.compose.material.icons.outlined.List
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.NearMe
+import androidx.compose.material.icons.outlined.PanTool
 import androidx.compose.material.icons.outlined.PhotoCameraBack
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Refresh
@@ -49,11 +59,13 @@ import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -61,11 +73,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -77,29 +91,25 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import com.google.android.gms.maps.CameraUpdateFactory
-import com.google.android.gms.maps.model.BitmapDescriptorFactory
-import com.google.android.gms.maps.model.CameraPosition
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.LatLngBounds
-import com.google.maps.android.compose.GoogleMap
-import com.google.maps.android.compose.MapProperties
-import com.google.maps.android.compose.MapUiSettings
-import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerState
-import com.google.maps.android.compose.rememberCameraPositionState
 import com.vzaimno.app.R
 import com.vzaimno.app.core.designsystem.theme.spacing
 import com.vzaimno.app.core.model.Announcement
 import com.vzaimno.app.core.model.AnnouncementStructuredData
+import com.vzaimno.app.core.model.GeoPoint
 import com.vzaimno.app.core.model.detailsDescriptionText
 import com.vzaimno.app.core.model.formattedBudgetText
 import com.vzaimno.app.core.model.hasAttachedMedia
@@ -108,6 +118,14 @@ import com.vzaimno.app.core.model.primaryDestinationAddress
 import com.vzaimno.app.core.model.primarySourceAddress
 import com.vzaimno.app.core.model.quickOfferPrice
 import com.vzaimno.app.core.model.taskStringValue
+import com.yandex.mapkit.Animation
+import com.yandex.mapkit.MapKitFactory
+import com.yandex.mapkit.geometry.Point
+import com.yandex.mapkit.map.CameraPosition
+import com.yandex.mapkit.map.InputListener
+import com.yandex.mapkit.map.Map
+import com.yandex.mapkit.map.MapObjectTapListener
+import com.yandex.mapkit.mapview.MapView
 
 @Composable
 fun AnnouncementDiscoveryRoute(
@@ -189,134 +207,307 @@ private fun AnnouncementDiscoveryScreen(
     onSubmitCustomOffer: () -> Unit,
     onMapFocusConsumed: (Long) -> Unit,
 ) {
-    val backgroundBrush = Brush.verticalGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.26f),
-            MaterialTheme.colorScheme.background,
-            MaterialTheme.colorScheme.background,
-        ),
-    )
-
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(backgroundBrush),
+            .background(MaterialTheme.colorScheme.background),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .windowInsetsPadding(
-                    WindowInsets.safeDrawing.only(
-                        WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
-                    ),
-                ),
-        ) {
-            DiscoveryHeader(
-                modifier = Modifier.padding(
-                    start = MaterialTheme.spacing.xLarge,
-                    top = MaterialTheme.spacing.xxLarge,
-                    end = MaterialTheme.spacing.xLarge,
-                ),
-            )
-            SearchAndModeRow(
-                modifier = Modifier.padding(
-                    start = MaterialTheme.spacing.xLarge,
-                    top = MaterialTheme.spacing.large,
-                    end = MaterialTheme.spacing.xLarge,
-                ),
-                state = state,
-                onSearchQueryChange = onSearchQueryChange,
-                onToggleContentMode = onToggleContentMode,
-            )
-            QuickFiltersRow(
-                modifier = Modifier.padding(top = MaterialTheme.spacing.medium),
-                filters = state.filters,
-                onToggleQuickCategory = onToggleQuickCategory,
-                onToggleQuickAction = onToggleQuickAction,
-            )
-            DiscoverySummaryRow(
-                modifier = Modifier.padding(
-                    start = MaterialTheme.spacing.xLarge,
-                    top = MaterialTheme.spacing.medium,
-                    end = MaterialTheme.spacing.xLarge,
-                ),
-                state = state,
-                onOpenFilters = onOpenFilters,
-                onClearAllFilters = onClearAllFilters,
-            )
+        when {
+            state.contentMode == DiscoveryContentMode.Map -> {
+                // Full-screen map with overlays
+                if (state.isMapConfigured) {
+                    YandexMapCanvas(
+                        state = state,
+                        onOpenAnnouncementDetails = onOpenAnnouncementDetails,
+                        onMapFocusConsumed = onMapFocusConsumed,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
+                    )
+                }
 
-            state.contentMessage?.let { message ->
-                InlineMessageCard(
-                    modifier = Modifier.padding(
-                        start = MaterialTheme.spacing.xLarge,
-                        top = MaterialTheme.spacing.medium,
-                        end = MaterialTheme.spacing.xLarge,
-                    ),
-                    message = message,
-                    onDismiss = onDismissContentMessage,
-                )
-            }
+                // Top overlay: Search bar + filter button
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .windowInsetsPadding(
+                            WindowInsets.safeDrawing.only(
+                                WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
+                            ),
+                        )
+                        .padding(
+                            start = MaterialTheme.spacing.large,
+                            top = MaterialTheme.spacing.medium,
+                            end = MaterialTheme.spacing.large,
+                        ),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                ) {
+                    // Search bar row
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(18.dp),
+                            color = MaterialTheme.colorScheme.surface,
+                            shadowElevation = 4.dp,
+                        ) {
+                            OutlinedTextField(
+                                modifier = Modifier.fillMaxWidth(),
+                                value = state.searchQuery,
+                                onValueChange = onSearchQueryChange,
+                                placeholder = {
+                                    Text(
+                                        text = stringResource(R.string.discovery_search_placeholder),
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                },
+                                singleLine = true,
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Search,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                },
+                                trailingIcon = if (state.searchQuery.isNotBlank()) {
+                                    {
+                                        IconButton(onClick = { onSearchQueryChange("") }) {
+                                            Icon(
+                                                imageVector = Icons.Outlined.Refresh,
+                                                contentDescription = stringResource(R.string.discovery_clear_search),
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    null
+                                },
+                                shape = RoundedCornerShape(18.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    unfocusedBorderColor = Color.Transparent,
+                                    focusedBorderColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f),
+                                ),
+                            )
+                        }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(top = MaterialTheme.spacing.large),
-            ) {
-                when {
-                    state.isInitialLoading && state.announcements.isEmpty() -> {
-                        CenterStatusCard(
-                            title = stringResource(R.string.discovery_loading_title),
-                            message = stringResource(R.string.discovery_loading_message),
-                            showProgress = true,
+                        Surface(
+                            shape = RoundedCornerShape(18.dp),
+                            color = MaterialTheme.colorScheme.surface,
+                            shadowElevation = 4.dp,
+                        ) {
+                            IconButton(
+                                modifier = Modifier.size(56.dp),
+                                onClick = onOpenFilters,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Tune,
+                                    contentDescription = stringResource(R.string.discovery_filters_button),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
+
+                    // Quick filter chips
+                    QuickActionChipsRow(
+                        filters = state.filters,
+                        onToggleQuickAction = onToggleQuickAction,
+                    )
+                }
+
+                // Right-side map action buttons
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .windowInsetsPadding(
+                            WindowInsets.safeDrawing.only(WindowInsetsSides.End),
+                        )
+                        .padding(end = MaterialTheme.spacing.large),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                ) {
+                    MapActionButton(
+                        icon = Icons.Filled.Add,
+                        contentDescription = stringResource(R.string.discovery_zoom_in),
+                        onClick = { /* Zoom handled by map */ },
+                    )
+                    MapActionButton(
+                        icon = Icons.Filled.Remove,
+                        contentDescription = stringResource(R.string.discovery_zoom_out),
+                        onClick = { /* Zoom handled by map */ },
+                    )
+                    MapActionButton(
+                        icon = Icons.Filled.MyLocation,
+                        contentDescription = stringResource(R.string.discovery_my_location),
+                        onClick = onRefresh,
+                    )
+                    MapActionButton(
+                        icon = Icons.Outlined.PanTool,
+                        contentDescription = stringResource(R.string.discovery_pan_mode),
+                        onClick = { },
+                    )
+                }
+
+                // Bottom floating "Filters & Route" card
+                Surface(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .windowInsetsPadding(
+                            WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
+                        )
+                        .padding(
+                            start = MaterialTheme.spacing.large,
+                            end = MaterialTheme.spacing.large,
+                            bottom = MaterialTheme.spacing.large,
+                        )
+                        .fillMaxWidth(),
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.surface,
+                    shadowElevation = 6.dp,
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = onOpenFilters)
+                            .padding(MaterialTheme.spacing.large),
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(
                             modifier = Modifier
-                                .align(Alignment.Center)
-                                .padding(horizontal = MaterialTheme.spacing.xLarge),
-                        )
-                    }
+                                .size(48.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Tune,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
 
-                    state.loadErrorMessage != null && state.announcements.isEmpty() -> {
-                        CenterStatusCard(
-                            title = stringResource(R.string.discovery_error_title),
-                            message = state.loadErrorMessage,
-                            showProgress = false,
-                            modifier = Modifier
-                                .align(Alignment.Center)
-                                .padding(horizontal = MaterialTheme.spacing.xLarge),
-                            primaryAction = {
-                                Button(onClick = onRetry) {
-                                    Text(text = stringResource(R.string.discovery_retry))
-                                }
-                            },
-                        )
-                    }
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                        ) {
+                            Text(
+                                text = stringResource(R.string.discovery_filters_and_route),
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                text = stringResource(R.string.discovery_filters_and_route_subtitle),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
 
-                    state.contentMode == DiscoveryContentMode.Map -> {
-                        DiscoveryMapContent(
-                            state = state,
-                            onRetry = onRetry,
-                            onRefresh = onRefresh,
-                            onOpenAnnouncementDetails = onOpenAnnouncementDetails,
-                            onOpenFilters = onOpenFilters,
-                            onMapFocusConsumed = onMapFocusConsumed,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                    }
-
-                    else -> {
-                        DiscoveryListContent(
-                            state = state,
-                            onRefresh = onRefresh,
-                            onOpenAnnouncementDetails = onOpenAnnouncementDetails,
-                            onShowAnnouncementOnMap = onShowAnnouncementOnMap,
-                            onOpenFilters = onOpenFilters,
-                            modifier = Modifier.fillMaxSize(),
-                        )
+                        Surface(
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.tertiary,
+                        ) {
+                            Icon(
+                                modifier = Modifier.padding(MaterialTheme.spacing.medium),
+                                imageVector = Icons.Outlined.ArrowForward,
+                                contentDescription = null,
+                                tint = Color.White,
+                            )
+                        }
                     }
                 }
+
+                // Empty state overlay
+                if (state.mapAnnouncements.isEmpty() && state.loadErrorMessage == null && !state.isInitialLoading) {
+                    CenterStatusCard(
+                        title = stringResource(R.string.discovery_empty_title),
+                        message = if (state.announcements.isEmpty()) {
+                            stringResource(R.string.discovery_empty_message)
+                        } else {
+                            stringResource(R.string.discovery_empty_map_message)
+                        },
+                        showProgress = false,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(horizontal = MaterialTheme.spacing.xLarge),
+                    )
+                }
+
+                // Loading overlay
+                if (state.isInitialLoading && state.announcements.isEmpty()) {
+                    CenterStatusCard(
+                        title = stringResource(R.string.discovery_loading_title),
+                        message = stringResource(R.string.discovery_loading_message),
+                        showProgress = true,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(horizontal = MaterialTheme.spacing.xLarge),
+                    )
+                }
+
+                // Error overlay
+                if (state.loadErrorMessage != null && state.announcements.isEmpty()) {
+                    CenterStatusCard(
+                        title = stringResource(R.string.discovery_error_title),
+                        message = state.loadErrorMessage,
+                        showProgress = false,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(horizontal = MaterialTheme.spacing.xLarge),
+                        primaryAction = {
+                            Button(onClick = onRetry) {
+                                Text(text = stringResource(R.string.discovery_retry))
+                            }
+                        },
+                    )
+                }
+
+                // Content message
+                state.contentMessage?.let { message ->
+                    InlineMessageCard(
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .windowInsetsPadding(
+                                WindowInsets.safeDrawing.only(WindowInsetsSides.Top),
+                            )
+                            .padding(top = 160.dp)
+                            .padding(horizontal = MaterialTheme.spacing.xLarge),
+                        message = message,
+                        onDismiss = onDismissContentMessage,
+                    )
+                }
+            }
+
+            else -> {
+                // List mode
+                DiscoveryListContent(
+                    state = state,
+                    onRefresh = onRefresh,
+                    onRetry = onRetry,
+                    onSearchQueryChange = onSearchQueryChange,
+                    onToggleContentMode = onToggleContentMode,
+                    onToggleQuickAction = onToggleQuickAction,
+                    onOpenAnnouncementDetails = onOpenAnnouncementDetails,
+                    onShowAnnouncementOnMap = onShowAnnouncementOnMap,
+                    onOpenFilters = onOpenFilters,
+                    onDismissContentMessage = onDismissContentMessage,
+                )
             }
         }
 
+        // List/Map mode toggle FAB (only on map mode)
+        if (state.contentMode == DiscoveryContentMode.Map) {
+            // Mode toggle is in the top bar on list mode
+        }
+
+        // Filters bottom sheet
         if (state.isFiltersSheetVisible) {
             FiltersBottomSheet(
                 draft = state.filterDraft,
@@ -334,6 +525,7 @@ private fun AnnouncementDiscoveryScreen(
             )
         }
 
+        // Details bottom sheet
         val detailsState = state.detailsState
         if (detailsState.isVisible && detailsState.item != null) {
             AnnouncementDetailsBottomSheet(
@@ -359,217 +551,389 @@ private fun AnnouncementDiscoveryScreen(
     }
 }
 
-@Composable
-private fun DiscoveryHeader(
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-    ) {
-        Text(
-            text = stringResource(R.string.shell_brand_caption),
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.primary,
-        )
-        Text(
-            text = stringResource(R.string.discovery_title),
-            style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-            color = MaterialTheme.colorScheme.onBackground,
-        )
-        Text(
-            text = stringResource(R.string.discovery_subtitle),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
+// -- Quick action filter chips matching reference (Забрать, Купить, Перенести) --
 
 @Composable
-private fun SearchAndModeRow(
-    state: DiscoveryUiState,
-    onSearchQueryChange: (String) -> Unit,
-    onToggleContentMode: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        OutlinedTextField(
-            modifier = Modifier.weight(1f),
-            value = state.searchQuery,
-            onValueChange = onSearchQueryChange,
-            placeholder = {
-                Text(text = stringResource(R.string.discovery_search_placeholder))
-            },
-            singleLine = true,
-            leadingIcon = {
-                Icon(
-                    imageVector = Icons.Outlined.Search,
-                    contentDescription = null,
-                )
-            },
-            trailingIcon = if (state.searchQuery.isNotBlank()) {
-                {
-                    IconButton(onClick = { onSearchQueryChange("") }) {
-                        Icon(
-                            imageVector = Icons.Outlined.Refresh,
-                            contentDescription = stringResource(R.string.discovery_clear_search),
-                        )
-                    }
-                }
-            } else {
-                null
-            },
-            shape = RoundedCornerShape(24.dp),
-        )
-
-        Surface(
-            shape = RoundedCornerShape(22.dp),
-            color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 2.dp,
-            shadowElevation = 2.dp,
-        ) {
-            IconButton(
-                modifier = Modifier.size(56.dp),
-                onClick = onToggleContentMode,
-            ) {
-                Icon(
-                    imageVector = if (state.contentMode == DiscoveryContentMode.Map) {
-                        Icons.AutoMirrored.Outlined.List
-                    } else {
-                        Icons.Outlined.Map
-                    },
-                    contentDescription = if (state.contentMode == DiscoveryContentMode.Map) {
-                        stringResource(R.string.discovery_switch_to_list)
-                    } else {
-                        stringResource(R.string.discovery_switch_to_map)
-                    },
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun QuickFiltersRow(
+private fun QuickActionChipsRow(
     filters: DiscoveryFilterState,
-    onToggleQuickCategory: (DiscoveryCategoryFilter) -> Unit,
     onToggleQuickAction: (AnnouncementStructuredData.ActionType) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LazyRow(
-        modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(horizontal = MaterialTheme.spacing.xLarge),
+    Row(
+        modifier = modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
-        item {
-            FilterChip(
-                selected = filters.categories.contains(DiscoveryCategoryFilter.Delivery),
-                onClick = { onToggleQuickCategory(DiscoveryCategoryFilter.Delivery) },
-                label = {
-                    Text(text = stringResource(R.string.discovery_category_delivery))
-                },
-            )
-        }
-        item {
-            FilterChip(
-                selected = filters.categories.contains(DiscoveryCategoryFilter.Help),
-                onClick = { onToggleQuickCategory(DiscoveryCategoryFilter.Help) },
-                label = {
-                    Text(text = stringResource(R.string.discovery_category_help))
-                },
-            )
-        }
-
         quickActionTypes.forEach { action ->
-            item {
-                FilterChip(
-                    selected = filters.actions.contains(action),
-                    onClick = { onToggleQuickAction(action) },
-                    label = {
-                        Text(text = action.uiLabel())
-                    },
-                )
+            val selected = filters.actions.contains(action)
+            Surface(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(999.dp))
+                    .clickable { onToggleQuickAction(action) },
+                shape = RoundedCornerShape(999.dp),
+                color = if (selected) {
+                    MaterialTheme.colorScheme.tertiary
+                } else {
+                    MaterialTheme.colorScheme.surface
+                },
+                shadowElevation = if (selected) 0.dp else 2.dp,
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = action.chipIcon(),
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = action.uiLabel(),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (selected) Color.White else MaterialTheme.colorScheme.onSurface,
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun DiscoverySummaryRow(
-    state: DiscoveryUiState,
-    onOpenFilters: () -> Unit,
-    onClearAllFilters: () -> Unit,
+private fun MapActionButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
-        tonalElevation = 1.dp,
+        modifier = modifier.size(48.dp),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 4.dp,
     ) {
-        Column(
-            modifier = Modifier.padding(MaterialTheme.spacing.large),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+        IconButton(
+            modifier = Modifier.fillMaxSize(),
+            onClick = onClick,
         ) {
-            Row(
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    Text(
-                        text = stringResource(
-                            R.string.discovery_results_summary,
-                            state.announcements.size,
-                            state.totalAnnouncementCount,
-                        ),
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(
-                        text = stringResource(
-                            R.string.discovery_map_points_summary,
-                            state.mapAnnouncements.size,
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+    }
+}
 
-                OutlinedButton(
-                    onClick = onOpenFilters,
+// -- Yandex MapKit integration --
+
+@Composable
+private fun YandexMapCanvas(
+    state: DiscoveryUiState,
+    onOpenAnnouncementDetails: (String) -> Unit,
+    onMapFocusConsumed: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    val mapView = remember {
+        MapView(context).apply {
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+            )
+        }
+    }
+
+    var isMapReady by remember { mutableStateOf(false) }
+
+    // Manage lifecycle
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_START -> {
+                    MapKitFactory.getInstance().onStart()
+                    mapView.onStart()
+                }
+                Lifecycle.Event.ON_STOP -> {
+                    mapView.onStop()
+                    MapKitFactory.getInstance().onStop()
+                }
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    // Update markers when announcements change
+    LaunchedEffect(state.mapAnnouncements, isMapReady) {
+        if (!isMapReady) return@LaunchedEffect
+        val map = mapView.mapWindow.map
+        val mapObjects = map.mapObjects
+        mapObjects.clear()
+
+        state.mapAnnouncements.forEach { item ->
+            val geoPoint = item.point ?: return@forEach
+            val placemark = mapObjects.addPlacemark(
+                Point(geoPoint.latitude, geoPoint.longitude),
+            )
+            placemark.addTapListener(MapObjectTapListener { _, _ ->
+                onOpenAnnouncementDetails(item.announcement.id)
+                true
+            })
+        }
+    }
+
+    // Handle viewport changes
+    LaunchedEffect(state.mapViewport, isMapReady) {
+        if (!isMapReady) return@LaunchedEffect
+        val map = mapView.mapWindow.map
+        val cameraPosition = when (val viewport = state.mapViewport) {
+            is DiscoveryMapViewport.FocusPoint -> CameraPosition(
+                Point(viewport.point.latitude, viewport.point.longitude),
+                viewport.zoom,
+                0f, 0f,
+            )
+            is DiscoveryMapViewport.Bounds -> CameraPosition(
+                Point(
+                    (viewport.southWest.latitude + viewport.northEast.latitude) / 2,
+                    (viewport.southWest.longitude + viewport.northEast.longitude) / 2,
+                ),
+                12f, 0f, 0f,
+            )
+            is DiscoveryMapViewport.Fallback -> CameraPosition(
+                Point(viewport.point.latitude, viewport.point.longitude),
+                viewport.zoom,
+                0f, 0f,
+            )
+        }
+        map.move(cameraPosition, Animation(Animation.Type.SMOOTH, 0.7f), null)
+    }
+
+    // Handle focus requests
+    LaunchedEffect(state.mapFocusRequest?.token, isMapReady) {
+        val request = state.mapFocusRequest ?: return@LaunchedEffect
+        if (!isMapReady) return@LaunchedEffect
+        val map = mapView.mapWindow.map
+        map.move(
+            CameraPosition(
+                Point(request.point.latitude, request.point.longitude),
+                request.zoom,
+                0f, 0f,
+            ),
+            Animation(Animation.Type.SMOOTH, 0.65f),
+            null,
+        )
+        onMapFocusConsumed(request.token)
+    }
+
+    AndroidView(
+        factory = {
+            mapView.also {
+                val map = it.mapWindow.map
+                map.move(
+                    CameraPosition(
+                        Point(55.751244, 37.618423),
+                        10f, 0f, 0f,
+                    ),
+                )
+                isMapReady = true
+            }
+        },
+        modifier = modifier,
+    )
+}
+
+// -- List mode content --
+
+@Composable
+private fun DiscoveryListContent(
+    state: DiscoveryUiState,
+    onRefresh: () -> Unit,
+    onRetry: () -> Unit,
+    onSearchQueryChange: (String) -> Unit,
+    onToggleContentMode: () -> Unit,
+    onToggleQuickAction: (AnnouncementStructuredData.ActionType) -> Unit,
+    onOpenAnnouncementDetails: (String) -> Unit,
+    onShowAnnouncementOnMap: (String) -> Unit,
+    onOpenFilters: () -> Unit,
+    onDismissContentMessage: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .windowInsetsPadding(
+                WindowInsets.safeDrawing.only(
+                    WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
+                ),
+            ),
+    ) {
+        // Search bar + mode toggle
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(
+                    start = MaterialTheme.spacing.large,
+                    top = MaterialTheme.spacing.medium,
+                    end = MaterialTheme.spacing.large,
+                ),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Surface(
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(18.dp),
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 2.dp,
+            ) {
+                OutlinedTextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    value = state.searchQuery,
+                    onValueChange = onSearchQueryChange,
+                    placeholder = {
+                        Text(
+                            text = stringResource(R.string.discovery_search_placeholder),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    },
+                    singleLine = true,
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Outlined.Search,
+                            contentDescription = null,
+                        )
+                    },
+                    shape = RoundedCornerShape(18.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedBorderColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f),
+                    ),
+                )
+            }
+
+            Surface(
+                shape = RoundedCornerShape(18.dp),
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 2.dp,
+            ) {
+                IconButton(
+                    modifier = Modifier.size(56.dp),
+                    onClick = onToggleContentMode,
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Tune,
-                        contentDescription = null,
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = if (state.filters.activeCount > 0) {
-                            stringResource(R.string.discovery_filters_with_count, state.filters.activeCount)
-                        } else {
-                            stringResource(R.string.discovery_filters_button)
-                        },
+                        imageVector = Icons.Outlined.Map,
+                        contentDescription = stringResource(R.string.discovery_switch_to_map),
                     )
                 }
             }
+        }
 
-            if (state.hasActiveSearchOrFilters) {
-                TextButton(
-                    onClick = onClearAllFilters,
-                ) {
-                    Text(text = stringResource(R.string.discovery_clear_filters))
+        // Quick filter chips
+        QuickActionChipsRow(
+            modifier = Modifier.padding(
+                start = MaterialTheme.spacing.large,
+                top = MaterialTheme.spacing.medium,
+                end = MaterialTheme.spacing.large,
+            ),
+            filters = state.filters,
+            onToggleQuickAction = onToggleQuickAction,
+        )
+
+        // Content message
+        state.contentMessage?.let { message ->
+            InlineMessageCard(
+                modifier = Modifier.padding(
+                    start = MaterialTheme.spacing.large,
+                    top = MaterialTheme.spacing.medium,
+                    end = MaterialTheme.spacing.large,
+                ),
+                message = message,
+                onDismiss = onDismissContentMessage,
+            )
+        }
+
+        // List content
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(top = MaterialTheme.spacing.medium),
+        ) {
+            when {
+                state.isInitialLoading && state.announcements.isEmpty() -> {
+                    CenterStatusCard(
+                        title = stringResource(R.string.discovery_loading_title),
+                        message = stringResource(R.string.discovery_loading_message),
+                        showProgress = true,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(horizontal = MaterialTheme.spacing.xLarge),
+                    )
+                }
+
+                state.loadErrorMessage != null && state.announcements.isEmpty() -> {
+                    CenterStatusCard(
+                        title = stringResource(R.string.discovery_error_title),
+                        message = state.loadErrorMessage,
+                        showProgress = false,
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .padding(horizontal = MaterialTheme.spacing.xLarge),
+                        primaryAction = {
+                            Button(onClick = onRetry) {
+                                Text(text = stringResource(R.string.discovery_retry))
+                            }
+                        },
+                    )
+                }
+
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(
+                            start = MaterialTheme.spacing.large,
+                            end = MaterialTheme.spacing.large,
+                            bottom = MaterialTheme.spacing.xxxLarge,
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                    ) {
+                        if (state.announcements.isEmpty()) {
+                            item {
+                                CenterStatusCard(
+                                    title = stringResource(R.string.discovery_empty_title),
+                                    message = stringResource(R.string.discovery_empty_message),
+                                    showProgress = false,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                            }
+                        } else {
+                            items(
+                                items = state.announcements,
+                                key = { item -> item.announcement.id },
+                            ) { item ->
+                                AnnouncementListCard(
+                                    item = item,
+                                    onOpenDetails = { onOpenAnnouncementDetails(item.announcement.id) },
+                                    onShowOnMap = { onShowAnnouncementOnMap(item.announcement.id) },
+                                    apiBaseUrl = state.apiBaseUrl,
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 }
+
+// -- Shared composables --
 
 @Composable
 private fun InlineMessageCard(
@@ -579,7 +943,7 @@ private fun InlineMessageCard(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.secondaryContainer,
     ) {
         Row(
@@ -601,265 +965,6 @@ private fun InlineMessageCard(
 }
 
 @Composable
-private fun DiscoveryMapContent(
-    state: DiscoveryUiState,
-    onRetry: () -> Unit,
-    onRefresh: () -> Unit,
-    onOpenAnnouncementDetails: (String) -> Unit,
-    onOpenFilters: () -> Unit,
-    onMapFocusConsumed: (Long) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Surface(
-        modifier = modifier.padding(horizontal = MaterialTheme.spacing.xLarge),
-        shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 2.dp,
-        shadowElevation = 4.dp,
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            if (state.isMapConfigured) {
-                MapCanvas(
-                    state = state,
-                    onOpenAnnouncementDetails = onOpenAnnouncementDetails,
-                    onMapFocusConsumed = onMapFocusConsumed,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            } else {
-                CenterStatusCard(
-                    title = stringResource(R.string.discovery_map_unavailable_title),
-                    message = stringResource(R.string.discovery_map_unavailable_message),
-                    showProgress = false,
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .padding(MaterialTheme.spacing.xLarge),
-                )
-            }
-
-            if (state.mapAnnouncements.isEmpty() && state.loadErrorMessage == null && !state.isInitialLoading) {
-                CenterStatusCard(
-                    title = stringResource(R.string.discovery_empty_title),
-                    message = if (state.announcements.isEmpty()) {
-                        stringResource(R.string.discovery_empty_message)
-                    } else {
-                        stringResource(R.string.discovery_empty_map_message)
-                    },
-                    showProgress = false,
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .padding(MaterialTheme.spacing.xLarge),
-                )
-            }
-
-            if (state.loadErrorMessage != null && state.announcements.isNotEmpty()) {
-                CenterStatusCard(
-                    title = stringResource(R.string.discovery_error_title),
-                    message = state.loadErrorMessage,
-                    showProgress = false,
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .padding(MaterialTheme.spacing.xLarge),
-                    primaryAction = {
-                        Button(onClick = onRetry) {
-                            Text(text = stringResource(R.string.discovery_retry))
-                        }
-                    },
-                )
-            }
-
-            DiscoveryFloatingActions(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(
-                        horizontal = MaterialTheme.spacing.large,
-                        vertical = MaterialTheme.spacing.large,
-                    ),
-                onRefresh = onRefresh,
-                onOpenFilters = onOpenFilters,
-            )
-        }
-    }
-}
-
-@Composable
-private fun MapCanvas(
-    state: DiscoveryUiState,
-    onOpenAnnouncementDetails: (String) -> Unit,
-    onMapFocusConsumed: (Long) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val cameraPositionState = rememberCameraPositionState {
-        position = CameraPosition.fromLatLngZoom(
-            LatLng(55.751244, 37.618423),
-            10f,
-        )
-    }
-    var isMapLoaded by remember { mutableStateOf(false) }
-    val density = LocalDensity.current
-    val cameraPadding = with(density) { 64.dp.roundToPx() }
-
-    LaunchedEffect(isMapLoaded, state.mapViewport) {
-        if (!isMapLoaded) return@LaunchedEffect
-        cameraPositionState.animate(
-            update = state.mapViewport.toCameraUpdate(cameraPadding),
-            durationMs = 700,
-        )
-    }
-
-    LaunchedEffect(isMapLoaded, state.mapFocusRequest?.token) {
-        val request = state.mapFocusRequest ?: return@LaunchedEffect
-        if (!isMapLoaded) return@LaunchedEffect
-
-        cameraPositionState.animate(
-            update = CameraUpdateFactory.newLatLngZoom(
-                LatLng(request.point.latitude, request.point.longitude),
-                request.zoom,
-            ),
-            durationMs = 650,
-        )
-        onMapFocusConsumed(request.token)
-    }
-
-    GoogleMap(
-        modifier = modifier,
-        cameraPositionState = cameraPositionState,
-        uiSettings = MapUiSettings(
-            compassEnabled = false,
-            mapToolbarEnabled = false,
-            myLocationButtonEnabled = false,
-            zoomControlsEnabled = false,
-        ),
-        properties = MapProperties(
-            isMyLocationEnabled = false,
-        ),
-        onMapLoaded = {
-            isMapLoaded = true
-        },
-    ) {
-        state.mapAnnouncements.forEach { item ->
-            val point = item.point ?: return@forEach
-            Marker(
-                state = MarkerState(
-                    position = LatLng(point.latitude, point.longitude),
-                ),
-                title = item.announcement.title,
-                snippet = item.subtitle,
-                icon = BitmapDescriptorFactory.defaultMarker(
-                    if (state.detailsState.announcementId == item.announcement.id) {
-                        BitmapDescriptorFactory.HUE_AZURE
-                    } else {
-                        BitmapDescriptorFactory.HUE_RED
-                    },
-                ),
-                onClick = {
-                    onOpenAnnouncementDetails(item.announcement.id)
-                    true
-                },
-            )
-        }
-    }
-}
-
-@Composable
-private fun DiscoveryFloatingActions(
-    onRefresh: () -> Unit,
-    onOpenFilters: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier.navigationBarsPadding(),
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-        horizontalAlignment = Alignment.End,
-    ) {
-        Surface(
-            shape = CircleShape,
-            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-            tonalElevation = 2.dp,
-            shadowElevation = 2.dp,
-        ) {
-            IconButton(
-                modifier = Modifier.size(52.dp),
-                onClick = onRefresh,
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Refresh,
-                    contentDescription = stringResource(R.string.discovery_refresh),
-                )
-            }
-        }
-
-        Button(
-            onClick = onOpenFilters,
-            contentPadding = PaddingValues(horizontal = 18.dp, vertical = 14.dp),
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.FilterAlt,
-                contentDescription = null,
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(text = stringResource(R.string.discovery_filters_button))
-        }
-    }
-}
-
-@Composable
-private fun DiscoveryListContent(
-    state: DiscoveryUiState,
-    onRefresh: () -> Unit,
-    onOpenAnnouncementDetails: (String) -> Unit,
-    onShowAnnouncementOnMap: (String) -> Unit,
-    onOpenFilters: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Box(modifier = modifier) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = MaterialTheme.spacing.xLarge,
-                top = 0.dp,
-                end = MaterialTheme.spacing.xLarge,
-                bottom = 160.dp,
-            ),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
-        ) {
-            if (state.announcements.isEmpty()) {
-                item {
-                    CenterStatusCard(
-                        title = stringResource(R.string.discovery_empty_title),
-                        message = stringResource(R.string.discovery_empty_message),
-                        showProgress = false,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-            } else {
-                items(
-                    items = state.announcements,
-                    key = { item -> item.announcement.id },
-                ) { item ->
-                    AnnouncementListCard(
-                        item = item,
-                        onOpenDetails = { onOpenAnnouncementDetails(item.announcement.id) },
-                        onShowOnMap = { onShowAnnouncementOnMap(item.announcement.id) },
-                        apiBaseUrl = state.apiBaseUrl,
-                    )
-                }
-            }
-        }
-
-        DiscoveryFloatingActions(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(
-                    horizontal = MaterialTheme.spacing.large,
-                    vertical = MaterialTheme.spacing.large,
-                ),
-            onRefresh = onRefresh,
-            onOpenFilters = onOpenFilters,
-        )
-    }
-}
-
-@Composable
 private fun AnnouncementListCard(
     item: DiscoveryAnnouncementItemUi,
     apiBaseUrl: String,
@@ -870,10 +975,11 @@ private fun AnnouncementListCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onOpenDetails),
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f),
         ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(
             modifier = Modifier.padding(MaterialTheme.spacing.large),
@@ -886,79 +992,53 @@ private fun AnnouncementListCard(
                 AnnouncementImage(
                     announcement = item.announcement,
                     apiBaseUrl = apiBaseUrl,
-                    modifier = Modifier.size(width = 96.dp, height = 96.dp),
+                    modifier = Modifier.size(width = 84.dp, height = 84.dp),
                 )
 
                 Column(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
                 ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-                    ) {
-                        DiscoveryInfoChip(
-                            label = item.announcement.discoveryCategoryLabel(),
-                            leadingIcon = Icons.Outlined.NearMe,
-                        )
-                        DiscoveryInfoChip(
-                            label = item.responseGate.availabilityLabel(),
-                            leadingIcon = when (item.responseGate) {
-                                DiscoveryResponseGate.Available -> Icons.Outlined.CheckCircle
-                                else -> Icons.Outlined.Inventory2
-                            },
-                        )
-                    }
                     Text(
                         text = item.announcement.title,
                         style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     if (item.subtitle.isNotBlank()) {
                         Text(
                             text = item.subtitle,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    item.budgetText?.let { budgetText ->
+                        DiscoveryInfoChip(
+                            label = budgetText,
+                            leadingIcon = Icons.Outlined.Inventory2,
                         )
                     }
                 }
             }
 
-            item.budgetText?.let { budgetText ->
-                DiscoveryInfoChip(
-                    label = budgetText,
-                    leadingIcon = Icons.Outlined.Inventory2,
-                )
-            }
-
-            AddressSummary(
-                sourceAddress = item.sourceAddress,
-                destinationAddress = item.destinationAddress,
-            )
-
-            if (!item.announcement.hasAttachedMedia) {
-                DiscoveryInfoChip(
-                    label = stringResource(R.string.discovery_no_photo),
-                    leadingIcon = Icons.Outlined.ImageNotSupported,
-                )
-            }
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                TextButton(
-                    onClick = onOpenDetails,
+            if (item.point != null) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(text = stringResource(R.string.discovery_open_details))
-                }
-
-                if (item.point != null) {
-                    OutlinedButton(onClick = onShowOnMap) {
+                    OutlinedButton(
+                        onClick = onShowOnMap,
+                        shape = RoundedCornerShape(14.dp),
+                    ) {
                         Icon(
                             imageVector = Icons.Outlined.Place,
                             contentDescription = null,
+                            modifier = Modifier.size(18.dp),
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(text = stringResource(R.string.discovery_show_on_map))
                     }
                 }
@@ -1017,16 +1097,12 @@ private fun FiltersBottomSheet(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                TextButton(
-                    onClick = onReset,
-                ) {
+                TextButton(onClick = onReset) {
                     Text(text = stringResource(R.string.discovery_reset_filters))
                 }
             }
 
-            FilterSection(
-                title = stringResource(R.string.discovery_filter_category_title),
-            ) {
+            FilterSection(title = stringResource(R.string.discovery_filter_category_title)) {
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
                     verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
@@ -1034,23 +1110,17 @@ private fun FiltersBottomSheet(
                     FilterChip(
                         selected = draft.categories.contains(DiscoveryCategoryFilter.Delivery),
                         onClick = { onToggleCategory(DiscoveryCategoryFilter.Delivery) },
-                        label = {
-                            Text(text = stringResource(R.string.discovery_category_delivery))
-                        },
+                        label = { Text(text = stringResource(R.string.discovery_category_delivery)) },
                     )
                     FilterChip(
                         selected = draft.categories.contains(DiscoveryCategoryFilter.Help),
                         onClick = { onToggleCategory(DiscoveryCategoryFilter.Help) },
-                        label = {
-                            Text(text = stringResource(R.string.discovery_category_help))
-                        },
+                        label = { Text(text = stringResource(R.string.discovery_category_help)) },
                     )
                 }
             }
 
-            FilterSection(
-                title = stringResource(R.string.discovery_filter_urgency_title),
-            ) {
+            FilterSection(title = stringResource(R.string.discovery_filter_urgency_title)) {
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
                     verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
@@ -1059,47 +1129,33 @@ private fun FiltersBottomSheet(
                         FilterChip(
                             selected = draft.urgencies.contains(urgency),
                             onClick = { onToggleUrgency(urgency) },
-                            label = {
-                                Text(text = urgency.uiLabel())
-                            },
+                            label = { Text(text = urgency.uiLabel()) },
                         )
                     }
                 }
             }
 
-            FilterSection(
-                title = stringResource(R.string.discovery_filter_budget_title),
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-                ) {
+            FilterSection(title = stringResource(R.string.discovery_filter_budget_title)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
                     OutlinedTextField(
                         modifier = Modifier.weight(1f),
                         value = draft.budgetMinText,
                         onValueChange = onBudgetMinChange,
-                        label = {
-                            Text(text = stringResource(R.string.discovery_filter_budget_min))
-                        },
+                        label = { Text(text = stringResource(R.string.discovery_filter_budget_min)) },
                         singleLine = true,
                     )
                     OutlinedTextField(
                         modifier = Modifier.weight(1f),
                         value = draft.budgetMaxText,
                         onValueChange = onBudgetMaxChange,
-                        label = {
-                            Text(text = stringResource(R.string.discovery_filter_budget_max))
-                        },
+                        label = { Text(text = stringResource(R.string.discovery_filter_budget_max)) },
                         singleLine = true,
                     )
                 }
             }
 
-            FilterSection(
-                title = stringResource(R.string.discovery_filter_preferences_title),
-            ) {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-                ) {
+            FilterSection(title = stringResource(R.string.discovery_filter_preferences_title)) {
+                Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
                     FilterToggleRow(
                         title = stringResource(R.string.discovery_filter_with_photo),
                         checked = draft.withPhotoOnly,
@@ -1126,8 +1182,15 @@ private fun FiltersBottomSheet(
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = onApply,
+                shape = RoundedCornerShape(18.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.tertiary,
+                ),
             ) {
-                Text(text = stringResource(R.string.discovery_apply_filters))
+                Text(
+                    text = stringResource(R.string.discovery_apply_filters),
+                    modifier = Modifier.padding(vertical = 4.dp),
+                )
             }
         }
     }
@@ -1146,9 +1209,7 @@ private fun AnnouncementDetailsBottomSheet(
     val item = detailsState.item ?: return
     val announcement = item.announcement
 
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-    ) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1184,12 +1245,12 @@ private fun AnnouncementDetailsBottomSheet(
                         ) {
                             items(
                                 items = announcement.imageUrls(apiBaseUrl),
-                                key = { imageUrl -> imageUrl },
+                                key = { it },
                             ) { imageUrl ->
                                 AsyncImage(
                                     modifier = Modifier
                                         .size(width = 220.dp, height = 160.dp)
-                                        .clip(RoundedCornerShape(24.dp)),
+                                        .clip(RoundedCornerShape(18.dp)),
                                     model = imageUrl,
                                     contentDescription = stringResource(R.string.ads_image_preview_description),
                                     contentScale = ContentScale.Crop,
@@ -1201,9 +1262,7 @@ private fun AnnouncementDetailsBottomSheet(
 
                 item {
                     DetailsSectionCard {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-                        ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
                             Text(
                                 text = announcement.discoveryCategoryLabel(),
                                 style = MaterialTheme.typography.labelLarge,
@@ -1221,14 +1280,9 @@ private fun AnnouncementDetailsBottomSheet(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-                            ) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
                                 item.budgetText?.let { budgetText ->
-                                    DiscoveryInfoChip(
-                                        label = budgetText,
-                                        leadingIcon = Icons.Outlined.Inventory2,
-                                    )
+                                    DiscoveryInfoChip(label = budgetText, leadingIcon = Icons.Outlined.Inventory2)
                                 }
                                 DiscoveryInfoChip(
                                     label = item.responseGate.availabilityLabel(),
@@ -1240,9 +1294,7 @@ private fun AnnouncementDetailsBottomSheet(
                 }
 
                 item {
-                    DetailsSectionCard(
-                        title = stringResource(R.string.discovery_details_addresses),
-                    ) {
+                    DetailsSectionCard(title = stringResource(R.string.discovery_details_addresses)) {
                         AddressSummary(
                             sourceAddress = announcement.primarySourceAddress,
                             destinationAddress = announcement.primaryDestinationAddress,
@@ -1253,9 +1305,7 @@ private fun AnnouncementDetailsBottomSheet(
 
                 announcement.detailsDescriptionText?.let { description ->
                     item {
-                        DetailsSectionCard(
-                            title = stringResource(R.string.discovery_details_description),
-                        ) {
+                        DetailsSectionCard(title = stringResource(R.string.discovery_details_description)) {
                             Text(
                                 text = description,
                                 style = MaterialTheme.typography.bodyLarge,
@@ -1268,17 +1318,10 @@ private fun AnnouncementDetailsBottomSheet(
                 item {
                     val rows = contactSummaryRows(announcement)
                     if (rows.isNotEmpty()) {
-                        DetailsSectionCard(
-                            title = stringResource(R.string.discovery_details_contacts),
-                        ) {
-                            Column(
-                                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-                            ) {
+                        DetailsSectionCard(title = stringResource(R.string.discovery_details_contacts)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
                                 rows.forEach { row ->
-                                    DetailValueRow(
-                                        label = row.first,
-                                        value = row.second,
-                                    )
+                                    DetailValueRow(label = row.first, value = row.second)
                                 }
                             }
                         }
@@ -1372,30 +1415,25 @@ private fun DiscoveryResponseComposer(
                         modifier = Modifier.fillMaxWidth(),
                         value = detailsState.offerMessage,
                         onValueChange = onOfferMessageChange,
-                        label = {
-                            Text(text = stringResource(R.string.discovery_offer_message_label))
-                        },
-                        placeholder = {
-                            Text(text = stringResource(R.string.discovery_offer_message_placeholder))
-                        },
+                        label = { Text(text = stringResource(R.string.discovery_offer_message_label)) },
+                        placeholder = { Text(text = stringResource(R.string.discovery_offer_message_placeholder)) },
                         minLines = 2,
                         maxLines = 4,
-                        shape = RoundedCornerShape(24.dp),
+                        shape = RoundedCornerShape(18.dp),
                     )
 
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-                    ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
                         announcementQuickOfferPrice(item.announcement)?.let { quickOfferPriceText ->
                             Button(
                                 modifier = Modifier.weight(1f),
                                 enabled = !detailsState.isSubmitting,
                                 onClick = onSubmitQuickOffer,
+                                shape = RoundedCornerShape(18.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.tertiary,
+                                ),
                             ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Outlined.Send,
-                                    contentDescription = null,
-                                )
+                                Icon(imageVector = Icons.AutoMirrored.Outlined.Send, contentDescription = null)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(text = quickOfferPriceText)
                             }
@@ -1405,6 +1443,7 @@ private fun DiscoveryResponseComposer(
                             modifier = Modifier.weight(1f),
                             enabled = !detailsState.isSubmitting,
                             onClick = onOpenCustomPriceDialog,
+                            shape = RoundedCornerShape(18.dp),
                         ) {
                             Text(text = stringResource(R.string.discovery_offer_custom_price))
                         }
@@ -1416,12 +1455,9 @@ private fun DiscoveryResponseComposer(
 }
 
 @Composable
-private fun ResponseStatusBanner(
-    title: String,
-    subtitle: String,
-) {
+private fun ResponseStatusBanner(title: String, subtitle: String) {
     Surface(
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
     ) {
         Column(
@@ -1453,34 +1489,23 @@ private fun CustomOfferPriceDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = {
-            Text(text = stringResource(R.string.discovery_offer_custom_title))
-        },
+        title = { Text(text = stringResource(R.string.discovery_offer_custom_title)) },
         text = {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-            ) {
+            Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
                 OutlinedTextField(
                     modifier = Modifier.fillMaxWidth(),
                     value = priceInput,
                     onValueChange = onPriceChange,
-                    label = {
-                        Text(text = stringResource(R.string.discovery_offer_custom_field))
-                    },
+                    label = { Text(text = stringResource(R.string.discovery_offer_custom_field)) },
                     supportingText = error?.let {
-                        {
-                            Text(text = stringResource(R.string.discovery_offer_custom_error))
-                        }
+                        { Text(text = stringResource(R.string.discovery_offer_custom_error)) }
                     },
                     singleLine = true,
                 )
             }
         },
         confirmButton = {
-            Button(
-                enabled = !isSubmitting,
-                onClick = onSubmit,
-            ) {
+            Button(enabled = !isSubmitting, onClick = onSubmit) {
                 Text(text = stringResource(R.string.discovery_offer_send))
             }
         },
@@ -1502,10 +1527,11 @@ private fun CenterStatusCard(
 ) {
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
         ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Column(
             modifier = Modifier
@@ -1523,7 +1549,6 @@ private fun CenterStatusCard(
                     tint = MaterialTheme.colorScheme.primary,
                 )
             }
-
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
@@ -1550,7 +1575,7 @@ private fun AnnouncementImage(
     val previewUrl = announcement.imageUrls(apiBaseUrl).firstOrNull()
     if (previewUrl != null) {
         AsyncImage(
-            modifier = modifier.clip(RoundedCornerShape(24.dp)),
+            modifier = modifier.clip(RoundedCornerShape(14.dp)),
             model = previewUrl,
             contentDescription = stringResource(R.string.ads_image_preview_description),
             contentScale = ContentScale.Crop,
@@ -1558,22 +1583,23 @@ private fun AnnouncementImage(
     } else {
         Box(
             modifier = modifier
-                .clip(RoundedCornerShape(24.dp))
+                .clip(RoundedCornerShape(14.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)),
             contentAlignment = Alignment.Center,
         ) {
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Icon(
                     imageVector = Icons.Outlined.PhotoCameraBack,
                     contentDescription = null,
+                    modifier = Modifier.size(20.dp),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Text(
                     text = stringResource(R.string.discovery_no_photo),
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center,
                 )
@@ -1589,12 +1615,8 @@ private fun AddressSummary(
     expanded: Boolean = false,
 ) {
     val lines = buildList {
-        if (!sourceAddress.isNullOrBlank()) {
-            add(stringResource(R.string.discovery_address_from, sourceAddress))
-        }
-        if (!destinationAddress.isNullOrBlank()) {
-            add(stringResource(R.string.discovery_address_to, destinationAddress))
-        }
+        if (!sourceAddress.isNullOrBlank()) add(stringResource(R.string.discovery_address_from, sourceAddress))
+        if (!destinationAddress.isNullOrBlank()) add(stringResource(R.string.discovery_address_to, destinationAddress))
     }
 
     if (lines.isEmpty()) {
@@ -1659,7 +1681,7 @@ private fun DetailsSectionCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f),
         ),
@@ -1681,13 +1703,8 @@ private fun DetailsSectionCard(
 }
 
 @Composable
-private fun DetailValueRow(
-    label: String,
-    value: String,
-) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
+private fun DetailValueRow(label: String, value: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelLarge,
@@ -1706,9 +1723,7 @@ private fun FilterSection(
     title: String,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-    ) {
+    Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
@@ -1726,7 +1741,7 @@ private fun FilterToggleRow(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f),
     ) {
         Row(
@@ -1744,13 +1759,12 @@ private fun FilterToggleRow(
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Spacer(modifier = Modifier.width(12.dp))
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange,
-            )
+            Switch(checked = checked, onCheckedChange = onCheckedChange)
         }
     }
 }
+
+// -- Label helpers --
 
 @Composable
 private fun Announcement.discoveryCategoryLabel(): String = when (category.trim().lowercase()) {
@@ -1767,6 +1781,15 @@ private fun AnnouncementStructuredData.ActionType.uiLabel(): String = when (this
     AnnouncementStructuredData.ActionType.Ride -> stringResource(R.string.discovery_action_ride)
     AnnouncementStructuredData.ActionType.ProHelp -> stringResource(R.string.discovery_action_pro_help)
     AnnouncementStructuredData.ActionType.Other -> stringResource(R.string.discovery_action_other)
+}
+
+private fun AnnouncementStructuredData.ActionType.chipIcon(): androidx.compose.ui.graphics.vector.ImageVector = when (this) {
+    AnnouncementStructuredData.ActionType.Pickup -> Icons.Outlined.Inventory2
+    AnnouncementStructuredData.ActionType.Buy -> Icons.Outlined.Inventory2
+    AnnouncementStructuredData.ActionType.Carry -> Icons.Outlined.NearMe
+    AnnouncementStructuredData.ActionType.Ride -> Icons.Outlined.NearMe
+    AnnouncementStructuredData.ActionType.ProHelp -> Icons.Outlined.CheckCircle
+    AnnouncementStructuredData.ActionType.Other -> Icons.Outlined.Place
 }
 
 @Composable
@@ -1797,10 +1820,7 @@ private fun DiscoveryResponseGate.gateCopy(): Pair<Int, Int> = when (this) {
 @Composable
 private fun announcementQuickOfferPrice(announcement: Announcement): String? =
     announcement.quickOfferPrice?.let { quickOfferPrice ->
-        stringResource(
-            R.string.discovery_offer_quick_price,
-            quickOfferPrice,
-        )
+        stringResource(R.string.discovery_offer_quick_price, quickOfferPrice)
     }
 
 @Composable
@@ -1840,32 +1860,6 @@ private fun contactMethodLabel(rawValue: String): String = when (rawValue.trim()
     "messages_only" -> stringResource(R.string.discovery_contact_method_messages_only)
     "calls_only" -> stringResource(R.string.discovery_contact_method_calls_only)
     else -> stringResource(R.string.discovery_contact_method_unknown)
-}
-
-private fun DiscoveryMapViewport.toCameraUpdate(padding: Int) = when (this) {
-    is DiscoveryMapViewport.FocusPoint -> {
-        CameraUpdateFactory.newLatLngZoom(
-            LatLng(point.latitude, point.longitude),
-            zoom,
-        )
-    }
-
-    is DiscoveryMapViewport.Bounds -> {
-        CameraUpdateFactory.newLatLngBounds(
-            LatLngBounds(
-                LatLng(southWest.latitude, southWest.longitude),
-                LatLng(northEast.latitude, northEast.longitude),
-            ),
-            padding,
-        )
-    }
-
-    is DiscoveryMapViewport.Fallback -> {
-        CameraUpdateFactory.newLatLngZoom(
-            LatLng(point.latitude, point.longitude),
-            zoom,
-        )
-    }
 }
 
 private val quickActionTypes = listOf(

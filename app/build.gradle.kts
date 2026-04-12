@@ -54,9 +54,9 @@ val debugEnvironmentName = propertyOrEnv("vzaimno.environment.debug", "local")
 val releaseEnvironmentName = propertyOrEnv("vzaimno.environment.release", "production")
 val debugAuthEnabled = propertyOrEnv("vzaimno.authEnabled.debug", "true").toBooleanStrictOrNull() ?: true
 val releaseAuthEnabled = propertyOrEnv("vzaimno.authEnabled.release", "true").toBooleanStrictOrNull() ?: true
-val commonGoogleMapsApiKey = propertyOrEnv("vzaimno.googleMapsApiKey", "")
-val debugGoogleMapsApiKey = propertyOrEnv("vzaimno.googleMapsApiKey.debug", commonGoogleMapsApiKey)
-val releaseGoogleMapsApiKey = propertyOrEnv("vzaimno.googleMapsApiKey.release", commonGoogleMapsApiKey)
+val commonYandexMapkitApiKey = propertyOrEnv("vzaimno.yandexMapkitApiKey", "")
+val debugYandexMapkitApiKey = propertyOrEnv("vzaimno.yandexMapkitApiKey.debug", commonYandexMapkitApiKey)
+val releaseYandexMapkitApiKey = propertyOrEnv("vzaimno.yandexMapkitApiKey.release", commonYandexMapkitApiKey)
 
 android {
     namespace = "com.vzaimno.app"
@@ -77,10 +77,9 @@ android {
             buildConfigField("String", "APP_ENVIRONMENT", "\"${escapeBuildConfig(debugEnvironmentName)}\"")
             buildConfigField("String", "API_BASE_URL", "\"${escapeBuildConfig(debugApiBaseUrl)}\"")
             buildConfigField("String", "WEBSOCKET_BASE_URL", "\"${escapeBuildConfig(debugWebSocketBaseUrl)}\"")
-            buildConfigField("String", "GOOGLE_MAPS_API_KEY", "\"${escapeBuildConfig(debugGoogleMapsApiKey)}\"")
+            buildConfigField("String", "YANDEX_MAPKIT_API_KEY", "\"${escapeBuildConfig(debugYandexMapkitApiKey)}\"")
             buildConfigField("boolean", "AUTH_ENABLED", debugAuthEnabled.toString())
             manifestPlaceholders["usesCleartextTraffic"] = true
-            manifestPlaceholders["googleMapsApiKey"] = escapeBuildConfig(debugGoogleMapsApiKey)
         }
 
         release {
@@ -92,10 +91,9 @@ android {
             buildConfigField("String", "APP_ENVIRONMENT", "\"${escapeBuildConfig(releaseEnvironmentName)}\"")
             buildConfigField("String", "API_BASE_URL", "\"${escapeBuildConfig(releaseApiBaseUrl)}\"")
             buildConfigField("String", "WEBSOCKET_BASE_URL", "\"${escapeBuildConfig(releaseWebSocketBaseUrl)}\"")
-            buildConfigField("String", "GOOGLE_MAPS_API_KEY", "\"${escapeBuildConfig(releaseGoogleMapsApiKey)}\"")
+            buildConfigField("String", "YANDEX_MAPKIT_API_KEY", "\"${escapeBuildConfig(releaseYandexMapkitApiKey)}\"")
             buildConfigField("boolean", "AUTH_ENABLED", releaseAuthEnabled.toString())
             manifestPlaceholders["usesCleartextTraffic"] = false
-            manifestPlaceholders["googleMapsApiKey"] = escapeBuildConfig(releaseGoogleMapsApiKey)
         }
     }
 
@@ -147,7 +145,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.coil.compose)
-    implementation(libs.google.maps.compose)
+    implementation(libs.yandex.mapkit)
     implementation(libs.androidx.security.crypto)
 
     kapt(libs.hilt.compiler)

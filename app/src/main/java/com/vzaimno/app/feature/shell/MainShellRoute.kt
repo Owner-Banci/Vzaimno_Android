@@ -12,9 +12,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -301,13 +303,14 @@ private fun ShellBottomBar(
     onTabSelected: (ShellTabDestination) -> Unit,
 ) {
     Surface(
-        tonalElevation = 3.dp,
-        shadowElevation = 8.dp,
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
+        tonalElevation = 0.dp,
+        shadowElevation = 12.dp,
+        color = MaterialTheme.colorScheme.surface,
     ) {
         NavigationBar(
             modifier = Modifier.navigationBarsPadding(),
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 0.dp,
         ) {
             ShellTabDestination.entries.forEach { tab ->
                 val selected = currentDestination?.hierarchy?.any { destination ->
@@ -317,15 +320,25 @@ private fun ShellBottomBar(
                     selected = selected,
                     onClick = { onTabSelected(tab) },
                     icon = {
-                        androidx.compose.material3.Icon(
+                        Icon(
                             imageVector = if (selected) tab.selectedIcon else tab.unselectedIcon,
                             contentDescription = stringResource(tab.labelRes),
                         )
                     },
                     label = {
-                        Text(text = stringResource(tab.labelRes))
+                        Text(
+                            text = stringResource(tab.labelRes),
+                            style = MaterialTheme.typography.labelSmall,
+                        )
                     },
                     alwaysShowLabel = true,
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = MaterialTheme.colorScheme.tertiary,
+                        selectedTextColor = MaterialTheme.colorScheme.tertiary,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        indicatorColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f),
+                    ),
                 )
             }
         }
