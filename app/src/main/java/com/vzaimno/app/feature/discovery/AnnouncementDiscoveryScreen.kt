@@ -1,11 +1,5 @@
 package com.vzaimno.app.feature.discovery
 
-import android.view.ViewGroup
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -40,22 +34,24 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.List
 import androidx.compose.material.icons.automirrored.outlined.Send
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.FilterAlt
 import androidx.compose.material.icons.outlined.ImageNotSupported
 import androidx.compose.material.icons.outlined.Inventory2
+import androidx.compose.material.icons.outlined.List
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.NearMe
-import androidx.compose.material.icons.outlined.PanTool
 import androidx.compose.material.icons.outlined.PhotoCameraBack
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Send
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
+import androidx.compose.material.icons.outlined.MyLocation
+import androidx.compose.material.icons.outlined.OpenWith
+import androidx.compose.material.icons.outlined.Remove
+import androidx.compose.material.icons.outlined.Route
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -79,7 +75,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -88,28 +83,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.vzaimno.app.R
 import com.vzaimno.app.core.designsystem.theme.spacing
 import com.vzaimno.app.core.model.Announcement
 import com.vzaimno.app.core.model.AnnouncementStructuredData
-import com.vzaimno.app.core.model.GeoPoint
 import com.vzaimno.app.core.model.detailsDescriptionText
 import com.vzaimno.app.core.model.formattedBudgetText
 import com.vzaimno.app.core.model.hasAttachedMedia
@@ -118,14 +106,7 @@ import com.vzaimno.app.core.model.primaryDestinationAddress
 import com.vzaimno.app.core.model.primarySourceAddress
 import com.vzaimno.app.core.model.quickOfferPrice
 import com.vzaimno.app.core.model.taskStringValue
-import com.yandex.mapkit.Animation
-import com.yandex.mapkit.MapKitFactory
-import com.yandex.mapkit.geometry.Point
-import com.yandex.mapkit.map.CameraPosition
-import com.yandex.mapkit.map.InputListener
-import com.yandex.mapkit.map.Map
-import com.yandex.mapkit.map.MapObjectTapListener
-import com.yandex.mapkit.mapview.MapView
+import kotlinx.coroutines.delay
 
 @Composable
 fun AnnouncementDiscoveryRoute(
@@ -213,301 +194,65 @@ private fun AnnouncementDiscoveryScreen(
             .background(MaterialTheme.colorScheme.background),
     ) {
         when {
+            state.isInitialLoading && state.announcements.isEmpty() -> {
+                DiscoveryCenterStatus(
+                    title = stringResource(R.string.discovery_loading_title),
+                    message = stringResource(R.string.discovery_loading_message),
+                    showProgress = true,
+                    modifier = Modifier.align(Alignment.Center),
+                )
+            }
+
+            state.loadErrorMessage != null && state.announcements.isEmpty() -> {
+                DiscoveryCenterStatus(
+                    title = stringResource(R.string.discovery_error_title),
+                    message = state.loadErrorMessage,
+                    showProgress = false,
+                    modifier = Modifier.align(Alignment.Center),
+                    primaryAction = {
+                        Button(
+                            onClick = onRetry,
+                            shape = RoundedCornerShape(24.dp),
+                        ) {
+                            Text(text = stringResource(R.string.discovery_retry))
+                        }
+                    },
+                )
+            }
+
             state.contentMode == DiscoveryContentMode.Map -> {
-                // Full-screen map with overlays
-                if (state.isMapConfigured) {
-                    YandexMapCanvas(
-                        state = state,
-                        onOpenAnnouncementDetails = onOpenAnnouncementDetails,
-                        onMapFocusConsumed = onMapFocusConsumed,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
-                    )
-                }
-
-                // Top overlay: Search bar + filter button
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .windowInsetsPadding(
-                            WindowInsets.safeDrawing.only(
-                                WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
-                            ),
-                        )
-                        .padding(
-                            start = MaterialTheme.spacing.large,
-                            top = MaterialTheme.spacing.medium,
-                            end = MaterialTheme.spacing.large,
-                        ),
-                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-                ) {
-                    // Search bar row
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Surface(
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(18.dp),
-                            color = MaterialTheme.colorScheme.surface,
-                            shadowElevation = 4.dp,
-                        ) {
-                            OutlinedTextField(
-                                modifier = Modifier.fillMaxWidth(),
-                                value = state.searchQuery,
-                                onValueChange = onSearchQueryChange,
-                                placeholder = {
-                                    Text(
-                                        text = stringResource(R.string.discovery_search_placeholder),
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                },
-                                singleLine = true,
-                                leadingIcon = {
-                                    Icon(
-                                        imageVector = Icons.Outlined.Search,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                },
-                                trailingIcon = if (state.searchQuery.isNotBlank()) {
-                                    {
-                                        IconButton(onClick = { onSearchQueryChange("") }) {
-                                            Icon(
-                                                imageVector = Icons.Outlined.Refresh,
-                                                contentDescription = stringResource(R.string.discovery_clear_search),
-                                            )
-                                        }
-                                    }
-                                } else {
-                                    null
-                                },
-                                shape = RoundedCornerShape(18.dp),
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    unfocusedBorderColor = Color.Transparent,
-                                    focusedBorderColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f),
-                                ),
-                            )
-                        }
-
-                        Surface(
-                            shape = RoundedCornerShape(18.dp),
-                            color = MaterialTheme.colorScheme.surface,
-                            shadowElevation = 4.dp,
-                        ) {
-                            IconButton(
-                                modifier = Modifier.size(56.dp),
-                                onClick = onOpenFilters,
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Tune,
-                                    contentDescription = stringResource(R.string.discovery_filters_button),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                    }
-
-                    // Quick filter chips
-                    QuickActionChipsRow(
-                        filters = state.filters,
-                        onToggleQuickAction = onToggleQuickAction,
-                    )
-                }
-
-                // Right-side map action buttons
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .windowInsetsPadding(
-                            WindowInsets.safeDrawing.only(WindowInsetsSides.End),
-                        )
-                        .padding(end = MaterialTheme.spacing.large),
-                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-                ) {
-                    MapActionButton(
-                        icon = Icons.Filled.Add,
-                        contentDescription = stringResource(R.string.discovery_zoom_in),
-                        onClick = { /* Zoom handled by map */ },
-                    )
-                    MapActionButton(
-                        icon = Icons.Filled.Remove,
-                        contentDescription = stringResource(R.string.discovery_zoom_out),
-                        onClick = { /* Zoom handled by map */ },
-                    )
-                    MapActionButton(
-                        icon = Icons.Filled.MyLocation,
-                        contentDescription = stringResource(R.string.discovery_my_location),
-                        onClick = onRefresh,
-                    )
-                    MapActionButton(
-                        icon = Icons.Outlined.PanTool,
-                        contentDescription = stringResource(R.string.discovery_pan_mode),
-                        onClick = { },
-                    )
-                }
-
-                // Bottom floating "Filters & Route" card
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .windowInsetsPadding(
-                            WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
-                        )
-                        .padding(
-                            start = MaterialTheme.spacing.large,
-                            end = MaterialTheme.spacing.large,
-                            bottom = MaterialTheme.spacing.large,
-                        )
-                        .fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    shadowElevation = 6.dp,
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(onClick = onOpenFilters)
-                            .padding(MaterialTheme.spacing.large),
-                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Tune,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(2.dp),
-                        ) {
-                            Text(
-                                text = stringResource(R.string.discovery_filters_and_route),
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
-                            Text(
-                                text = stringResource(R.string.discovery_filters_and_route_subtitle),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.tertiary,
-                        ) {
-                            Icon(
-                                modifier = Modifier.padding(MaterialTheme.spacing.medium),
-                                imageVector = Icons.Outlined.ArrowForward,
-                                contentDescription = null,
-                                tint = Color.White,
-                            )
-                        }
-                    }
-                }
-
-                // Empty state overlay
-                if (state.mapAnnouncements.isEmpty() && state.loadErrorMessage == null && !state.isInitialLoading) {
-                    CenterStatusCard(
-                        title = stringResource(R.string.discovery_empty_title),
-                        message = if (state.announcements.isEmpty()) {
-                            stringResource(R.string.discovery_empty_message)
-                        } else {
-                            stringResource(R.string.discovery_empty_map_message)
-                        },
-                        showProgress = false,
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(horizontal = MaterialTheme.spacing.xLarge),
-                    )
-                }
-
-                // Loading overlay
-                if (state.isInitialLoading && state.announcements.isEmpty()) {
-                    CenterStatusCard(
-                        title = stringResource(R.string.discovery_loading_title),
-                        message = stringResource(R.string.discovery_loading_message),
-                        showProgress = true,
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(horizontal = MaterialTheme.spacing.xLarge),
-                    )
-                }
-
-                // Error overlay
-                if (state.loadErrorMessage != null && state.announcements.isEmpty()) {
-                    CenterStatusCard(
-                        title = stringResource(R.string.discovery_error_title),
-                        message = state.loadErrorMessage,
-                        showProgress = false,
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(horizontal = MaterialTheme.spacing.xLarge),
-                        primaryAction = {
-                            Button(onClick = onRetry) {
-                                Text(text = stringResource(R.string.discovery_retry))
-                            }
-                        },
-                    )
-                }
-
-                // Content message
-                state.contentMessage?.let { message ->
-                    InlineMessageCard(
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .windowInsetsPadding(
-                                WindowInsets.safeDrawing.only(WindowInsetsSides.Top),
-                            )
-                            .padding(top = 160.dp)
-                            .padding(horizontal = MaterialTheme.spacing.xLarge),
-                        message = message,
-                        onDismiss = onDismissContentMessage,
-                    )
-                }
+                DiscoveryMapLayout(
+                    state = state,
+                    onRetry = onRetry,
+                    onRefresh = onRefresh,
+                    onSearchQueryChange = onSearchQueryChange,
+                    onToggleContentMode = onToggleContentMode,
+                    onToggleQuickCategory = onToggleQuickCategory,
+                    onToggleQuickAction = onToggleQuickAction,
+                    onOpenAnnouncementDetails = onOpenAnnouncementDetails,
+                    onOpenFilters = onOpenFilters,
+                    onMapFocusConsumed = onMapFocusConsumed,
+                    onDismissContentMessage = onDismissContentMessage,
+                )
             }
 
             else -> {
-                // List mode
-                DiscoveryListContent(
+                DiscoveryListLayout(
                     state = state,
                     onRefresh = onRefresh,
-                    onRetry = onRetry,
                     onSearchQueryChange = onSearchQueryChange,
                     onToggleContentMode = onToggleContentMode,
+                    onToggleQuickCategory = onToggleQuickCategory,
                     onToggleQuickAction = onToggleQuickAction,
                     onOpenAnnouncementDetails = onOpenAnnouncementDetails,
                     onShowAnnouncementOnMap = onShowAnnouncementOnMap,
                     onOpenFilters = onOpenFilters,
+                    onClearAllFilters = onClearAllFilters,
                     onDismissContentMessage = onDismissContentMessage,
                 )
             }
         }
 
-        // List/Map mode toggle FAB (only on map mode)
-        if (state.contentMode == DiscoveryContentMode.Map) {
-            // Mode toggle is in the top bar on list mode
-        }
-
-        // Filters bottom sheet
         if (state.isFiltersSheetVisible) {
             FiltersBottomSheet(
                 draft = state.filterDraft,
@@ -525,7 +270,6 @@ private fun AnnouncementDiscoveryScreen(
             )
         }
 
-        // Details bottom sheet
         val detailsState = state.detailsState
         if (detailsState.isVisible && detailsState.item != null) {
             AnnouncementDetailsBottomSheet(
@@ -551,64 +295,360 @@ private fun AnnouncementDiscoveryScreen(
     }
 }
 
-// -- Quick action filter chips matching reference (Забрать, Купить, Перенести) --
+// ── Map-first layout ───────────────────────────────────────────────
 
 @Composable
-private fun QuickActionChipsRow(
-    filters: DiscoveryFilterState,
+private fun DiscoveryMapLayout(
+    state: DiscoveryUiState,
+    onRetry: () -> Unit,
+    onRefresh: () -> Unit,
+    onSearchQueryChange: (String) -> Unit,
+    onToggleContentMode: () -> Unit,
+    onToggleQuickCategory: (DiscoveryCategoryFilter) -> Unit,
     onToggleQuickAction: (AnnouncementStructuredData.ActionType) -> Unit,
+    onOpenAnnouncementDetails: (String) -> Unit,
+    onOpenFilters: () -> Unit,
+    onMapFocusConsumed: (Long) -> Unit,
+    onDismissContentMessage: () -> Unit,
+) {
+    var isMapLoaded by remember(state.isMapConfigured) { mutableStateOf(false) }
+    var isMapLoadTimedOut by remember(state.isMapConfigured) { mutableStateOf(false) }
+
+    LaunchedEffect(state.isMapConfigured) {
+        if (!state.isMapConfigured) {
+            isMapLoaded = false
+            isMapLoadTimedOut = false
+            return@LaunchedEffect
+        }
+        isMapLoaded = false
+        isMapLoadTimedOut = false
+        delay(6_000)
+        if (!isMapLoaded) {
+            isMapLoadTimedOut = true
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Full-screen map canvas
+        if (state.isMapConfigured) {
+            MapCanvas(
+                state = state,
+                onOpenAnnouncementDetails = onOpenAnnouncementDetails,
+                onMapFocusConsumed = onMapFocusConsumed,
+                onMapLoaded = {
+                    isMapLoaded = true
+                    isMapLoadTimedOut = false
+                },
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
+        // Map status overlays
+        if (!state.isMapConfigured) {
+            DiscoveryCenterStatus(
+                title = stringResource(R.string.discovery_map_unavailable_title),
+                message = stringResource(R.string.discovery_map_unavailable_message),
+                showProgress = false,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(horizontal = 32.dp),
+            )
+        }
+        if (state.isMapConfigured && !isMapLoaded && !isMapLoadTimedOut) {
+            DiscoveryCenterStatus(
+                title = stringResource(R.string.discovery_map_loading_title),
+                message = stringResource(R.string.discovery_map_loading_message),
+                showProgress = true,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(horizontal = 32.dp),
+            )
+        }
+        if (state.isMapConfigured && isMapLoadTimedOut) {
+            DiscoveryCenterStatus(
+                title = stringResource(R.string.discovery_map_runtime_unavailable_title),
+                message = stringResource(R.string.discovery_map_runtime_unavailable_message),
+                showProgress = false,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(horizontal = 32.dp),
+                primaryAction = {
+                    Button(
+                        onClick = onRetry,
+                        shape = RoundedCornerShape(24.dp),
+                    ) {
+                        Text(text = stringResource(R.string.discovery_retry))
+                    }
+                },
+            )
+        }
+        if (
+            state.mapAnnouncements.isEmpty() &&
+            state.loadErrorMessage == null &&
+            !state.isInitialLoading &&
+            (!state.isMapConfigured || isMapLoaded || isMapLoadTimedOut)
+        ) {
+            DiscoveryCenterStatus(
+                title = stringResource(R.string.discovery_empty_title),
+                message = if (state.announcements.isEmpty()) {
+                    stringResource(R.string.discovery_empty_message)
+                } else {
+                    stringResource(R.string.discovery_empty_map_message)
+                },
+                showProgress = false,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(horizontal = 32.dp),
+            )
+        }
+        if (state.loadErrorMessage != null && state.announcements.isNotEmpty()) {
+            DiscoveryCenterStatus(
+                title = stringResource(R.string.discovery_error_title),
+                message = state.loadErrorMessage,
+                showProgress = false,
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(horizontal = 32.dp),
+                primaryAction = {
+                    Button(
+                        onClick = onRetry,
+                        shape = RoundedCornerShape(24.dp),
+                    ) {
+                        Text(text = stringResource(R.string.discovery_retry))
+                    }
+                },
+            )
+        }
+
+        // Top overlay: search + chips
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .windowInsetsPadding(
+                    WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+                )
+                .padding(top = 12.dp),
+        ) {
+            MapSearchBar(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                query = state.searchQuery,
+                onQueryChange = onSearchQueryChange,
+                onToggleContentMode = onToggleContentMode,
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            MapQuickChips(
+                filters = state.filters,
+                onToggleQuickCategory = onToggleQuickCategory,
+                onToggleQuickAction = onToggleQuickAction,
+            )
+            state.contentMessage?.let { message ->
+                InlineMessageCard(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    message = message,
+                    onDismiss = onDismissContentMessage,
+                )
+            }
+        }
+
+        // Right-side map action buttons
+        MapActionButtons(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = 12.dp),
+        )
+
+        // Bottom floating card
+        FiltersAndRouteCard(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+            onOpenFilters = onOpenFilters,
+            resultCount = state.announcements.size,
+            filterCount = state.filters.activeCount,
+        )
+    }
+}
+
+// ── Map overlay components ─────────────────────────────────────────
+
+@Composable
+private fun MapSearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onToggleContentMode: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier.horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        quickActionTypes.forEach { action ->
-            val selected = filters.actions.contains(action)
-            Surface(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(999.dp))
-                    .clickable { onToggleQuickAction(action) },
-                shape = RoundedCornerShape(999.dp),
-                color = if (selected) {
-                    MaterialTheme.colorScheme.tertiary
-                } else {
-                    MaterialTheme.colorScheme.surface
-                },
-                shadowElevation = if (selected) 0.dp else 2.dp,
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        imageVector = action.chipIcon(),
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                        tint = if (selected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+        Surface(
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(28.dp),
+            color = MaterialTheme.colorScheme.surface,
+            shadowElevation = 4.dp,
+        ) {
+            OutlinedTextField(
+                modifier = Modifier.fillMaxWidth(),
+                value = query,
+                onValueChange = onQueryChange,
+                placeholder = {
                     Text(
-                        text = action.uiLabel(),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = if (selected) Color.White else MaterialTheme.colorScheme.onSurface,
+                        text = stringResource(R.string.discovery_search_placeholder),
+                        style = MaterialTheme.typography.bodyMedium,
                     )
-                }
+                },
+                singleLine = true,
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Outlined.Search,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp),
+                    )
+                },
+                trailingIcon = if (query.isNotBlank()) {
+                    {
+                        IconButton(onClick = { onQueryChange("") }) {
+                            Icon(
+                                imageVector = Icons.Outlined.Refresh,
+                                contentDescription = stringResource(R.string.discovery_clear_search),
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                    }
+                } else {
+                    null
+                },
+                shape = RoundedCornerShape(28.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                ),
+            )
+        }
+
+        Surface(
+            shape = RoundedCornerShape(24.dp),
+            color = MaterialTheme.colorScheme.surface,
+            shadowElevation = 4.dp,
+        ) {
+            IconButton(
+                modifier = Modifier.size(52.dp),
+                onClick = onToggleContentMode,
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.List,
+                    contentDescription = stringResource(R.string.discovery_switch_to_list),
+                    tint = MaterialTheme.colorScheme.onSurface,
+                )
             }
         }
     }
 }
 
 @Composable
+private fun MapQuickChips(
+    filters: DiscoveryFilterState,
+    onToggleQuickCategory: (DiscoveryCategoryFilter) -> Unit,
+    onToggleQuickAction: (AnnouncementStructuredData.ActionType) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyRow(
+        modifier = modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        item {
+            OneUiChip(
+                selected = filters.categories.contains(DiscoveryCategoryFilter.Delivery),
+                onClick = { onToggleQuickCategory(DiscoveryCategoryFilter.Delivery) },
+                label = stringResource(R.string.discovery_category_delivery),
+                leadingIcon = Icons.Outlined.NearMe,
+            )
+        }
+        item {
+            OneUiChip(
+                selected = filters.categories.contains(DiscoveryCategoryFilter.Help),
+                onClick = { onToggleQuickCategory(DiscoveryCategoryFilter.Help) },
+                label = stringResource(R.string.discovery_category_help),
+            )
+        }
+        quickActionTypes.forEach { action ->
+            item {
+                OneUiChip(
+                    selected = filters.actions.contains(action),
+                    onClick = { onToggleQuickAction(action) },
+                    label = action.uiLabel(),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun OneUiChip(
+    selected: Boolean,
+    onClick: () -> Unit,
+    label: String,
+    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier,
+        onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
+        color = if (selected) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.surface
+        },
+        shadowElevation = if (selected) 0.dp else 2.dp,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            leadingIcon?.let { icon ->
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = if (selected) {
+                        MaterialTheme.colorScheme.onPrimary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+            }
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = if (selected) {
+                    MaterialTheme.colorScheme.onPrimary
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+            )
+        }
+    }
+}
+
+@Composable
 private fun MapActionButton(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: @Composable () -> Unit,
     contentDescription: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
-        modifier = modifier.size(48.dp),
-        shape = RoundedCornerShape(14.dp),
+        modifier = modifier.size(44.dp),
+        shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = 4.dp,
     ) {
@@ -616,179 +656,155 @@ private fun MapActionButton(
             modifier = Modifier.fillMaxSize(),
             onClick = onClick,
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = contentDescription,
-                tint = MaterialTheme.colorScheme.onSurface,
-            )
+            icon()
         }
     }
 }
 
-// -- Yandex MapKit integration --
-
 @Composable
-private fun YandexMapCanvas(
-    state: DiscoveryUiState,
-    onOpenAnnouncementDetails: (String) -> Unit,
-    onMapFocusConsumed: (Long) -> Unit,
+private fun MapActionButtons(
     modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-
-    val mapView = remember {
-        MapView(context).apply {
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT,
-            )
-        }
-    }
-
-    var isMapReady by remember { mutableStateOf(false) }
-
-    // Manage lifecycle
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            when (event) {
-                Lifecycle.Event.ON_START -> {
-                    MapKitFactory.getInstance().onStart()
-                    mapView.onStart()
-                }
-                Lifecycle.Event.ON_STOP -> {
-                    mapView.onStop()
-                    MapKitFactory.getInstance().onStop()
-                }
-                else -> {}
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-        }
-    }
-
-    // Update markers when announcements change
-    LaunchedEffect(state.mapAnnouncements, isMapReady) {
-        if (!isMapReady) return@LaunchedEffect
-        val map = mapView.mapWindow.map
-        val mapObjects = map.mapObjects
-        mapObjects.clear()
-
-        state.mapAnnouncements.forEach { item ->
-            val geoPoint = item.point ?: return@forEach
-            val placemark = mapObjects.addPlacemark(
-                Point(geoPoint.latitude, geoPoint.longitude),
-            )
-            placemark.addTapListener(MapObjectTapListener { _, _ ->
-                onOpenAnnouncementDetails(item.announcement.id)
-                true
-            })
-        }
-    }
-
-    // Handle viewport changes
-    LaunchedEffect(state.mapViewport, isMapReady) {
-        if (!isMapReady) return@LaunchedEffect
-        val map = mapView.mapWindow.map
-        val cameraPosition = when (val viewport = state.mapViewport) {
-            is DiscoveryMapViewport.FocusPoint -> CameraPosition(
-                Point(viewport.point.latitude, viewport.point.longitude),
-                viewport.zoom,
-                0f, 0f,
-            )
-            is DiscoveryMapViewport.Bounds -> CameraPosition(
-                Point(
-                    (viewport.southWest.latitude + viewport.northEast.latitude) / 2,
-                    (viewport.southWest.longitude + viewport.northEast.longitude) / 2,
-                ),
-                12f, 0f, 0f,
-            )
-            is DiscoveryMapViewport.Fallback -> CameraPosition(
-                Point(viewport.point.latitude, viewport.point.longitude),
-                viewport.zoom,
-                0f, 0f,
-            )
-        }
-        map.move(cameraPosition, Animation(Animation.Type.SMOOTH, 0.7f), null)
-    }
-
-    // Handle focus requests
-    LaunchedEffect(state.mapFocusRequest?.token, isMapReady) {
-        val request = state.mapFocusRequest ?: return@LaunchedEffect
-        if (!isMapReady) return@LaunchedEffect
-        val map = mapView.mapWindow.map
-        map.move(
-            CameraPosition(
-                Point(request.point.latitude, request.point.longitude),
-                request.zoom,
-                0f, 0f,
-            ),
-            Animation(Animation.Type.SMOOTH, 0.65f),
-            null,
-        )
-        onMapFocusConsumed(request.token)
-    }
-
-    AndroidView(
-        factory = {
-            mapView.also {
-                val map = it.mapWindow.map
-                map.move(
-                    CameraPosition(
-                        Point(55.751244, 37.618423),
-                        10f, 0f, 0f,
-                    ),
-                )
-                isMapReady = true
-            }
-        },
+    Column(
         modifier = modifier,
-    )
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        MapActionButton(
+            icon = {
+                Icon(
+                    imageVector = Icons.Outlined.Add,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(20.dp),
+                )
+            },
+            contentDescription = stringResource(R.string.discovery_zoom_in),
+            onClick = { /* Zoom handled by MapKit gestures */ },
+        )
+        MapActionButton(
+            icon = {
+                Icon(
+                    imageVector = Icons.Outlined.Remove,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(20.dp),
+                )
+            },
+            contentDescription = stringResource(R.string.discovery_zoom_out),
+            onClick = { /* Zoom handled by MapKit gestures */ },
+        )
+        MapActionButton(
+            icon = {
+                Icon(
+                    imageVector = Icons.Outlined.MyLocation,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp),
+                )
+            },
+            contentDescription = stringResource(R.string.discovery_my_location),
+            onClick = { /* Location permission + focus */ },
+        )
+    }
 }
 
-// -- List mode content --
+@Composable
+private fun FiltersAndRouteCard(
+    onOpenFilters: () -> Unit,
+    resultCount: Int,
+    filterCount: Int,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 6.dp,
+    ) {
+        Row(
+            modifier = Modifier
+                .clickable(onClick = onOpenFilters)
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Surface(
+                shape = RoundedCornerShape(14.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+            ) {
+                Icon(
+                    modifier = Modifier.padding(10.dp),
+                    imageVector = Icons.Outlined.Route,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+            }
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.discovery_filters_and_route),
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = if (filterCount > 0) {
+                        stringResource(R.string.discovery_filters_with_count, filterCount)
+                    } else {
+                        stringResource(R.string.discovery_filters_and_route_subtitle)
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primary,
+            ) {
+                Icon(
+                    modifier = Modifier.padding(8.dp).size(18.dp),
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                )
+            }
+        }
+    }
+}
+
+// ── List layout ────────────────────────────────────────────────────
 
 @Composable
-private fun DiscoveryListContent(
+private fun DiscoveryListLayout(
     state: DiscoveryUiState,
     onRefresh: () -> Unit,
-    onRetry: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onToggleContentMode: () -> Unit,
+    onToggleQuickCategory: (DiscoveryCategoryFilter) -> Unit,
     onToggleQuickAction: (AnnouncementStructuredData.ActionType) -> Unit,
     onOpenAnnouncementDetails: (String) -> Unit,
     onShowAnnouncementOnMap: (String) -> Unit,
     onOpenFilters: () -> Unit,
+    onClearAllFilters: () -> Unit,
     onDismissContentMessage: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
             .windowInsetsPadding(
-                WindowInsets.safeDrawing.only(
-                    WindowInsetsSides.Top + WindowInsetsSides.Horizontal,
-                ),
+                WindowInsets.safeDrawing.only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
             ),
     ) {
-        // Search bar + mode toggle
+        // Search bar with map toggle
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    start = MaterialTheme.spacing.large,
-                    top = MaterialTheme.spacing.medium,
-                    end = MaterialTheme.spacing.large,
-                ),
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+            modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Surface(
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(18.dp),
+                shape = RoundedCornerShape(28.dp),
                 color = MaterialTheme.colorScheme.surface,
                 shadowElevation = 2.dp,
             ) {
@@ -799,8 +815,7 @@ private fun DiscoveryListContent(
                     placeholder = {
                         Text(
                             text = stringResource(R.string.discovery_search_placeholder),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.bodyMedium,
                         )
                     },
                     singleLine = true,
@@ -808,132 +823,164 @@ private fun DiscoveryListContent(
                         Icon(
                             imageVector = Icons.Outlined.Search,
                             contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(20.dp),
                         )
                     },
-                    shape = RoundedCornerShape(18.dp),
+                    trailingIcon = if (state.searchQuery.isNotBlank()) {
+                        {
+                            IconButton(onClick = { onSearchQueryChange("") }) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Refresh,
+                                    contentDescription = stringResource(R.string.discovery_clear_search),
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        }
+                    } else {
+                        null
+                    },
+                    shape = RoundedCornerShape(28.dp),
                     colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color.Transparent,
                         unfocusedBorderColor = Color.Transparent,
-                        focusedBorderColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.5f),
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
                     ),
                 )
             }
 
             Surface(
-                shape = RoundedCornerShape(18.dp),
+                shape = RoundedCornerShape(24.dp),
                 color = MaterialTheme.colorScheme.surface,
                 shadowElevation = 2.dp,
             ) {
                 IconButton(
-                    modifier = Modifier.size(56.dp),
+                    modifier = Modifier.size(52.dp),
                     onClick = onToggleContentMode,
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Map,
                         contentDescription = stringResource(R.string.discovery_switch_to_map),
+                        tint = MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }
         }
 
-        // Quick filter chips
-        QuickActionChipsRow(
-            modifier = Modifier.padding(
-                start = MaterialTheme.spacing.large,
-                top = MaterialTheme.spacing.medium,
-                end = MaterialTheme.spacing.large,
-            ),
+        // Quick chips
+        Spacer(modifier = Modifier.height(10.dp))
+        MapQuickChips(
             filters = state.filters,
+            onToggleQuickCategory = onToggleQuickCategory,
             onToggleQuickAction = onToggleQuickAction,
         )
 
-        // Content message
+        // Summary + filter bar
+        Row(
+            modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                modifier = Modifier.weight(1f),
+                text = stringResource(
+                    R.string.discovery_results_summary,
+                    state.announcements.size,
+                    state.totalAnnouncementCount,
+                ),
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Surface(
+                onClick = onOpenFilters,
+                shape = RoundedCornerShape(20.dp),
+                color = if (state.filters.activeCount > 0) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainerLow
+                },
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Tune,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = if (state.filters.activeCount > 0) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                    Text(
+                        text = if (state.filters.activeCount > 0) {
+                            stringResource(R.string.discovery_filters_with_count, state.filters.activeCount)
+                        } else {
+                            stringResource(R.string.discovery_filters_button)
+                        },
+                        style = MaterialTheme.typography.labelLarge,
+                        color = if (state.filters.activeCount > 0) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                    )
+                }
+            }
+        }
+
         state.contentMessage?.let { message ->
             InlineMessageCard(
-                modifier = Modifier.padding(
-                    start = MaterialTheme.spacing.large,
-                    top = MaterialTheme.spacing.medium,
-                    end = MaterialTheme.spacing.large,
-                ),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 message = message,
                 onDismiss = onDismissContentMessage,
             )
         }
 
         // List content
-        Box(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)
-                .padding(top = MaterialTheme.spacing.medium),
+                .weight(1f),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                top = 12.dp,
+                end = 16.dp,
+                bottom = 100.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            when {
-                state.isInitialLoading && state.announcements.isEmpty() -> {
-                    CenterStatusCard(
-                        title = stringResource(R.string.discovery_loading_title),
-                        message = stringResource(R.string.discovery_loading_message),
-                        showProgress = true,
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(horizontal = MaterialTheme.spacing.xLarge),
-                    )
-                }
-
-                state.loadErrorMessage != null && state.announcements.isEmpty() -> {
-                    CenterStatusCard(
-                        title = stringResource(R.string.discovery_error_title),
-                        message = state.loadErrorMessage,
+            if (state.announcements.isEmpty()) {
+                item {
+                    DiscoveryCenterStatus(
+                        title = stringResource(R.string.discovery_empty_title),
+                        message = stringResource(R.string.discovery_empty_message),
                         showProgress = false,
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(horizontal = MaterialTheme.spacing.xLarge),
-                        primaryAction = {
-                            Button(onClick = onRetry) {
-                                Text(text = stringResource(R.string.discovery_retry))
-                            }
-                        },
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
-
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            start = MaterialTheme.spacing.large,
-                            end = MaterialTheme.spacing.large,
-                            bottom = MaterialTheme.spacing.xxxLarge,
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-                    ) {
-                        if (state.announcements.isEmpty()) {
-                            item {
-                                CenterStatusCard(
-                                    title = stringResource(R.string.discovery_empty_title),
-                                    message = stringResource(R.string.discovery_empty_message),
-                                    showProgress = false,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                            }
-                        } else {
-                            items(
-                                items = state.announcements,
-                                key = { item -> item.announcement.id },
-                            ) { item ->
-                                AnnouncementListCard(
-                                    item = item,
-                                    onOpenDetails = { onOpenAnnouncementDetails(item.announcement.id) },
-                                    onShowOnMap = { onShowAnnouncementOnMap(item.announcement.id) },
-                                    apiBaseUrl = state.apiBaseUrl,
-                                )
-                            }
-                        }
-                    }
+            } else {
+                items(
+                    items = state.announcements,
+                    key = { item -> item.announcement.id },
+                ) { item ->
+                    AnnouncementListCard(
+                        item = item,
+                        onOpenDetails = { onOpenAnnouncementDetails(item.announcement.id) },
+                        onShowOnMap = { onShowAnnouncementOnMap(item.announcement.id) },
+                        apiBaseUrl = state.apiBaseUrl,
+                    )
                 }
             }
         }
     }
 }
 
-// -- Shared composables --
+// ── Shared components ──────────────────────────────────────────────
 
 @Composable
 private fun InlineMessageCard(
@@ -943,12 +990,12 @@ private fun InlineMessageCard(
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.secondaryContainer,
     ) {
         Row(
-            modifier = Modifier.padding(MaterialTheme.spacing.large),
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
@@ -971,37 +1018,36 @@ private fun AnnouncementListCard(
     onOpenDetails: () -> Unit,
     onShowOnMap: () -> Unit,
 ) {
-    Card(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
             .clickable(onClick = onOpenDetails),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f),
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 2.dp,
     ) {
         Column(
-            modifier = Modifier.padding(MaterialTheme.spacing.large),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.Top,
             ) {
                 AnnouncementImage(
                     announcement = item.announcement,
                     apiBaseUrl = apiBaseUrl,
-                    modifier = Modifier.size(width = 84.dp, height = 84.dp),
+                    modifier = Modifier.size(80.dp),
                 )
 
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(
                         text = item.announcement.title,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -1009,43 +1055,229 @@ private fun AnnouncementListCard(
                     if (item.subtitle.isNotBlank()) {
                         Text(
                             text = item.subtitle,
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 2,
+                            maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    item.budgetText?.let { budgetText ->
-                        DiscoveryInfoChip(
-                            label = budgetText,
-                            leadingIcon = Icons.Outlined.Inventory2,
-                        )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        DiscoveryInfoChip(label = item.announcement.discoveryCategoryLabel())
+                        item.budgetText?.let { budgetText ->
+                            DiscoveryInfoChip(label = budgetText)
+                        }
                     }
                 }
             }
 
-            if (item.point != null) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-                    verticalAlignment = Alignment.CenterVertically,
+            AddressSummary(
+                sourceAddress = item.sourceAddress,
+                destinationAddress = item.destinationAddress,
+            )
+
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Button(
+                    onClick = onOpenDetails,
+                    shape = RoundedCornerShape(20.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                    ),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
                 ) {
+                    Text(
+                        text = stringResource(R.string.discovery_open_details),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
+
+                if (item.point != null) {
                     OutlinedButton(
                         onClick = onShowOnMap,
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Place,
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(16.dp),
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = stringResource(R.string.discovery_show_on_map))
+                        Text(
+                            text = stringResource(R.string.discovery_show_on_map),
+                            style = MaterialTheme.typography.labelLarge,
+                        )
                     }
                 }
             }
         }
     }
 }
+
+@Composable
+private fun DiscoveryCenterStatus(
+    title: String,
+    message: String,
+    showProgress: Boolean,
+    modifier: Modifier = Modifier,
+    primaryAction: (@Composable () -> Unit)? = null,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(28.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 4.dp,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            if (showProgress) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(40.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    strokeWidth = 3.dp,
+                )
+            } else {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                ) {
+                    Icon(
+                        modifier = Modifier.padding(14.dp),
+                        imageVector = Icons.Outlined.Place,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+            )
+            primaryAction?.invoke()
+        }
+    }
+}
+
+@Composable
+private fun AnnouncementImage(
+    announcement: Announcement,
+    apiBaseUrl: String,
+    modifier: Modifier = Modifier,
+) {
+    val previewUrl = announcement.imageUrls(apiBaseUrl).firstOrNull()
+    if (previewUrl != null) {
+        AsyncImage(
+            modifier = modifier.clip(RoundedCornerShape(18.dp)),
+            model = previewUrl,
+            contentDescription = stringResource(R.string.ads_image_preview_description),
+            contentScale = ContentScale.Crop,
+        )
+    } else {
+        Box(
+            modifier = modifier
+                .clip(RoundedCornerShape(18.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.PhotoCameraBack,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(24.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun AddressSummary(
+    sourceAddress: String?,
+    destinationAddress: String?,
+    expanded: Boolean = false,
+) {
+    val lines = buildList {
+        if (!sourceAddress.isNullOrBlank()) {
+            add(stringResource(R.string.discovery_address_from, sourceAddress))
+        }
+        if (!destinationAddress.isNullOrBlank()) {
+            add(stringResource(R.string.discovery_address_to, destinationAddress))
+        }
+    }
+
+    if (lines.isEmpty()) {
+        Text(
+            text = stringResource(R.string.discovery_address_missing),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        return
+    }
+
+    Column(
+        verticalArrangement = Arrangement.spacedBy(if (expanded) 10.dp else 4.dp),
+    ) {
+        lines.forEach { line ->
+            Text(
+                text = line,
+                style = if (expanded) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun DiscoveryInfoChip(
+    label: String,
+    modifier: Modifier = Modifier,
+    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            leadingIcon?.let { icon ->
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    modifier = Modifier.size(12.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+// ── Bottom sheets ──────────────────────────────────────────────────
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -1065,18 +1297,20 @@ private fun FiltersBottomSheet(
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
                 .padding(
-                    start = MaterialTheme.spacing.xLarge,
+                    start = 20.dp,
                     top = 0.dp,
-                    end = MaterialTheme.spacing.xLarge,
-                    bottom = MaterialTheme.spacing.xLarge,
+                    end = 20.dp,
+                    bottom = 20.dp,
                 ),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -1084,11 +1318,11 @@ private fun FiltersBottomSheet(
             ) {
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
                     Text(
                         text = stringResource(R.string.discovery_filters_title),
-                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.onSurface,
                     )
                     Text(
@@ -1104,45 +1338,49 @@ private fun FiltersBottomSheet(
 
             FilterSection(title = stringResource(R.string.discovery_filter_category_title)) {
                 FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     FilterChip(
                         selected = draft.categories.contains(DiscoveryCategoryFilter.Delivery),
                         onClick = { onToggleCategory(DiscoveryCategoryFilter.Delivery) },
                         label = { Text(text = stringResource(R.string.discovery_category_delivery)) },
+                        shape = RoundedCornerShape(16.dp),
                     )
                     FilterChip(
                         selected = draft.categories.contains(DiscoveryCategoryFilter.Help),
                         onClick = { onToggleCategory(DiscoveryCategoryFilter.Help) },
                         label = { Text(text = stringResource(R.string.discovery_category_help)) },
+                        shape = RoundedCornerShape(16.dp),
                     )
                 }
             }
 
             FilterSection(title = stringResource(R.string.discovery_filter_urgency_title)) {
                 FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     urgencyFilters.forEach { urgency ->
                         FilterChip(
                             selected = draft.urgencies.contains(urgency),
                             onClick = { onToggleUrgency(urgency) },
                             label = { Text(text = urgency.uiLabel()) },
+                            shape = RoundedCornerShape(16.dp),
                         )
                     }
                 }
             }
 
             FilterSection(title = stringResource(R.string.discovery_filter_budget_title)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(
                         modifier = Modifier.weight(1f),
                         value = draft.budgetMinText,
                         onValueChange = onBudgetMinChange,
                         label = { Text(text = stringResource(R.string.discovery_filter_budget_min)) },
                         singleLine = true,
+                        shape = RoundedCornerShape(16.dp),
                     )
                     OutlinedTextField(
                         modifier = Modifier.weight(1f),
@@ -1150,12 +1388,13 @@ private fun FiltersBottomSheet(
                         onValueChange = onBudgetMaxChange,
                         label = { Text(text = stringResource(R.string.discovery_filter_budget_max)) },
                         singleLine = true,
+                        shape = RoundedCornerShape(16.dp),
                     )
                 }
             }
 
             FilterSection(title = stringResource(R.string.discovery_filter_preferences_title)) {
-                Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     FilterToggleRow(
                         title = stringResource(R.string.discovery_filter_with_photo),
                         checked = draft.withPhotoOnly,
@@ -1182,14 +1421,12 @@ private fun FiltersBottomSheet(
             Button(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = onApply,
-                shape = RoundedCornerShape(18.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.tertiary,
-                ),
+                shape = RoundedCornerShape(24.dp),
+                contentPadding = PaddingValues(vertical = 16.dp),
             ) {
                 Text(
                     text = stringResource(R.string.discovery_apply_filters),
-                    modifier = Modifier.padding(vertical = 4.dp),
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                 )
             }
         }
@@ -1209,7 +1446,11 @@ private fun AnnouncementDetailsBottomSheet(
     val item = detailsState.item ?: return
     val announcement = item.announcement
 
-    ModalBottomSheet(onDismissRequest = onDismiss) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1219,7 +1460,7 @@ private fun AnnouncementDetailsBottomSheet(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = MaterialTheme.spacing.xLarge),
+                        .padding(horizontal = 20.dp),
                     horizontalArrangement = Arrangement.Center,
                 ) {
                     CircularProgressIndicator(modifier = Modifier.size(22.dp))
@@ -1231,26 +1472,26 @@ private fun AnnouncementDetailsBottomSheet(
                     .fillMaxWidth()
                     .weight(1f, fill = false),
                 contentPadding = PaddingValues(
-                    start = MaterialTheme.spacing.xLarge,
-                    top = MaterialTheme.spacing.large,
-                    end = MaterialTheme.spacing.xLarge,
-                    bottom = MaterialTheme.spacing.large,
+                    start = 20.dp,
+                    top = 16.dp,
+                    end = 20.dp,
+                    bottom = 16.dp,
                 ),
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 if (announcement.hasAttachedMedia) {
                     item {
                         LazyRow(
-                            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             items(
                                 items = announcement.imageUrls(apiBaseUrl),
-                                key = { it },
+                                key = { imageUrl -> imageUrl },
                             ) { imageUrl ->
                                 AsyncImage(
                                     modifier = Modifier
-                                        .size(width = 220.dp, height = 160.dp)
-                                        .clip(RoundedCornerShape(18.dp)),
+                                        .size(width = 200.dp, height = 150.dp)
+                                        .clip(RoundedCornerShape(20.dp)),
                                     model = imageUrl,
                                     contentDescription = stringResource(R.string.ads_image_preview_description),
                                     contentScale = ContentScale.Crop,
@@ -1262,7 +1503,7 @@ private fun AnnouncementDetailsBottomSheet(
 
                 item {
                     DetailsSectionCard {
-                        Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             Text(
                                 text = announcement.discoveryCategoryLabel(),
                                 style = MaterialTheme.typography.labelLarge,
@@ -1270,7 +1511,7 @@ private fun AnnouncementDetailsBottomSheet(
                             )
                             Text(
                                 text = announcement.title,
-                                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                                style = MaterialTheme.typography.headlineSmall,
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
                             if (item.subtitle.isNotBlank()) {
@@ -1280,7 +1521,7 @@ private fun AnnouncementDetailsBottomSheet(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
-                            Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 item.budgetText?.let { budgetText ->
                                     DiscoveryInfoChip(label = budgetText, leadingIcon = Icons.Outlined.Inventory2)
                                 }
@@ -1319,7 +1560,7 @@ private fun AnnouncementDetailsBottomSheet(
                     val rows = contactSummaryRows(announcement)
                     if (rows.isNotEmpty()) {
                         DetailsSectionCard(title = stringResource(R.string.discovery_details_contacts)) {
-                            Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 rows.forEach { row ->
                                     DetailValueRow(label = row.first, value = row.second)
                                 }
@@ -1384,15 +1625,15 @@ private fun DiscoveryResponseComposer(
     onSubmitQuickOffer: () -> Unit,
 ) {
     Surface(
-        tonalElevation = 2.dp,
+        tonalElevation = 1.dp,
         shadowElevation = 4.dp,
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.99f),
+        color = MaterialTheme.colorScheme.surface,
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(MaterialTheme.spacing.large),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             when {
                 detailsState.offerSuccessState == DiscoveryOfferSuccessState.Submitted -> {
@@ -1419,22 +1660,23 @@ private fun DiscoveryResponseComposer(
                         placeholder = { Text(text = stringResource(R.string.discovery_offer_message_placeholder)) },
                         minLines = 2,
                         maxLines = 4,
-                        shape = RoundedCornerShape(18.dp),
+                        shape = RoundedCornerShape(20.dp),
                     )
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         announcementQuickOfferPrice(item.announcement)?.let { quickOfferPriceText ->
                             Button(
                                 modifier = Modifier.weight(1f),
                                 enabled = !detailsState.isSubmitting,
                                 onClick = onSubmitQuickOffer,
-                                shape = RoundedCornerShape(18.dp),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.tertiary,
-                                ),
+                                shape = RoundedCornerShape(20.dp),
                             ) {
-                                Icon(imageVector = Icons.AutoMirrored.Outlined.Send, contentDescription = null)
-                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Outlined.Send,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(text = quickOfferPriceText)
                             }
                         }
@@ -1443,7 +1685,7 @@ private fun DiscoveryResponseComposer(
                             modifier = Modifier.weight(1f),
                             enabled = !detailsState.isSubmitting,
                             onClick = onOpenCustomPriceDialog,
-                            shape = RoundedCornerShape(18.dp),
+                            shape = RoundedCornerShape(20.dp),
                         ) {
                             Text(text = stringResource(R.string.discovery_offer_custom_price))
                         }
@@ -1455,18 +1697,21 @@ private fun DiscoveryResponseComposer(
 }
 
 @Composable
-private fun ResponseStatusBanner(title: String, subtitle: String) {
+private fun ResponseStatusBanner(
+    title: String,
+    subtitle: String,
+) {
     Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
         Column(
-            modifier = Modifier.padding(MaterialTheme.spacing.large),
+            modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
@@ -1489,9 +1734,10 @@ private fun CustomOfferPriceDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(28.dp),
         title = { Text(text = stringResource(R.string.discovery_offer_custom_title)) },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
                     modifier = Modifier.fillMaxWidth(),
                     value = priceInput,
@@ -1501,11 +1747,16 @@ private fun CustomOfferPriceDialog(
                         { Text(text = stringResource(R.string.discovery_offer_custom_error)) }
                     },
                     singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
                 )
             }
         },
         confirmButton = {
-            Button(enabled = !isSubmitting, onClick = onSubmit) {
+            Button(
+                enabled = !isSubmitting,
+                onClick = onSubmit,
+                shape = RoundedCornerShape(20.dp),
+            ) {
                 Text(text = stringResource(R.string.discovery_offer_send))
             }
         },
@@ -1518,182 +1769,23 @@ private fun CustomOfferPriceDialog(
 }
 
 @Composable
-private fun CenterStatusCard(
-    title: String,
-    message: String,
-    showProgress: Boolean,
-    modifier: Modifier = Modifier,
-    primaryAction: (@Composable () -> Unit)? = null,
-) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(MaterialTheme.spacing.xLarge),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-        ) {
-            if (showProgress) {
-                CircularProgressIndicator()
-            } else {
-                Icon(
-                    imageVector = Icons.Outlined.Place,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                )
-            }
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center,
-            )
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-            )
-            primaryAction?.invoke()
-        }
-    }
-}
-
-@Composable
-private fun AnnouncementImage(
-    announcement: Announcement,
-    apiBaseUrl: String,
-    modifier: Modifier = Modifier,
-) {
-    val previewUrl = announcement.imageUrls(apiBaseUrl).firstOrNull()
-    if (previewUrl != null) {
-        AsyncImage(
-            modifier = modifier.clip(RoundedCornerShape(14.dp)),
-            model = previewUrl,
-            contentDescription = stringResource(R.string.ads_image_preview_description),
-            contentScale = ContentScale.Crop,
-        )
-    } else {
-        Box(
-            modifier = modifier
-                .clip(RoundedCornerShape(14.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.PhotoCameraBack,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = stringResource(R.string.discovery_no_photo),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun AddressSummary(
-    sourceAddress: String?,
-    destinationAddress: String?,
-    expanded: Boolean = false,
-) {
-    val lines = buildList {
-        if (!sourceAddress.isNullOrBlank()) add(stringResource(R.string.discovery_address_from, sourceAddress))
-        if (!destinationAddress.isNullOrBlank()) add(stringResource(R.string.discovery_address_to, destinationAddress))
-    }
-
-    if (lines.isEmpty()) {
-        Text(
-            text = stringResource(R.string.discovery_address_missing),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        return
-    }
-
-    Column(
-        verticalArrangement = Arrangement.spacedBy(if (expanded) MaterialTheme.spacing.medium else 6.dp),
-    ) {
-        lines.forEach { line ->
-            Text(
-                text = line,
-                style = if (expanded) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
-private fun DiscoveryInfoChip(
-    label: String,
-    modifier: Modifier = Modifier,
-    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null,
-) {
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(999.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.48f),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            leadingIcon?.let { icon ->
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    modifier = Modifier.size(14.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-@Composable
 private fun DetailsSectionCard(
     title: String? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Card(
+    Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f),
-        ),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         Column(
-            modifier = Modifier.padding(MaterialTheme.spacing.xLarge),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             if (!title.isNullOrBlank()) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                     color = MaterialTheme.colorScheme.onSurface,
                 )
             }
@@ -1703,11 +1795,14 @@ private fun DetailsSectionCard(
 }
 
 @Composable
-private fun DetailValueRow(label: String, value: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+private fun DetailValueRow(
+    label: String,
+    value: String,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Text(
@@ -1723,10 +1818,10 @@ private fun FilterSection(
     title: String,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(
             text = title,
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
             color = MaterialTheme.colorScheme.onSurface,
         )
         content()
@@ -1741,14 +1836,14 @@ private fun FilterToggleRow(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.42f),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow,
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 56.dp)
-                .padding(horizontal = 16.dp, vertical = 10.dp),
+                .heightIn(min = 52.dp)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -1764,7 +1859,7 @@ private fun FilterToggleRow(
     }
 }
 
-// -- Label helpers --
+// ── Extensions ─────────────────────────────────────────────────────
 
 @Composable
 private fun Announcement.discoveryCategoryLabel(): String = when (category.trim().lowercase()) {
@@ -1781,15 +1876,6 @@ private fun AnnouncementStructuredData.ActionType.uiLabel(): String = when (this
     AnnouncementStructuredData.ActionType.Ride -> stringResource(R.string.discovery_action_ride)
     AnnouncementStructuredData.ActionType.ProHelp -> stringResource(R.string.discovery_action_pro_help)
     AnnouncementStructuredData.ActionType.Other -> stringResource(R.string.discovery_action_other)
-}
-
-private fun AnnouncementStructuredData.ActionType.chipIcon(): androidx.compose.ui.graphics.vector.ImageVector = when (this) {
-    AnnouncementStructuredData.ActionType.Pickup -> Icons.Outlined.Inventory2
-    AnnouncementStructuredData.ActionType.Buy -> Icons.Outlined.Inventory2
-    AnnouncementStructuredData.ActionType.Carry -> Icons.Outlined.NearMe
-    AnnouncementStructuredData.ActionType.Ride -> Icons.Outlined.NearMe
-    AnnouncementStructuredData.ActionType.ProHelp -> Icons.Outlined.CheckCircle
-    AnnouncementStructuredData.ActionType.Other -> Icons.Outlined.Place
 }
 
 @Composable

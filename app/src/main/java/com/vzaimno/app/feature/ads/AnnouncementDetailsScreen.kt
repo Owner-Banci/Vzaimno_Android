@@ -2,6 +2,8 @@ package com.vzaimno.app.feature.ads
 
 import android.text.format.DateUtils
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +23,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
@@ -30,11 +33,14 @@ import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.LocalShipping
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.PhotoLibrary
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.SupportAgent
+import androidx.compose.material.icons.outlined.TaskAlt
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -46,6 +52,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -63,6 +71,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -74,6 +83,7 @@ import com.vzaimno.app.R
 import com.vzaimno.app.core.common.humanizeRawValue
 import com.vzaimno.app.core.designsystem.theme.spacing
 import com.vzaimno.app.core.model.Announcement
+import com.vzaimno.app.core.model.AnnouncementOffer
 import com.vzaimno.app.core.model.ModerationSeverity
 import com.vzaimno.app.core.model.detailsDescriptionText
 import com.vzaimno.app.core.model.formattedBudgetText
@@ -94,12 +104,24 @@ fun AnnouncementDetailsRoute(
     onBack: () -> Unit,
     onRequestParentRefresh: () -> Unit,
     onCreateAgain: (Announcement) -> Unit,
+    onOpenChatThread: (String) -> Unit,
     viewModel: AnnouncementDetailsViewModel = hiltViewModel(),
+    offersViewModel: AnnouncementOffersViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val offersState by offersViewModel.uiState.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    val offersSection = state.announcement?.ownerOffersSectionPresentation()
 
     LaunchedEffect(Unit) {
         viewModel.loadIfNeeded()
+    }
+
+    LaunchedEffect(state.announcement?.id, offersSection?.isVisible) {
+        if (offersSection?.isVisible == true) {
+            offersViewModel.loadIfNeeded()
+        }
     }
 
     LaunchedEffect(viewModel) {
@@ -114,16 +136,47 @@ fun AnnouncementDetailsRoute(
         }
     }
 
+    LaunchedEffect(offersViewModel) {
+        offersViewModel.events.collectLatest { event ->
+            when (event) {
+                is AnnouncementOffersEvent.OfferAccepted -> {
+                    viewModel.refresh()
+                    onRequestParentRefresh()
+                    onOpenChatThread(event.threadId)
+                }
+
+                AnnouncementOffersEvent.OfferRejected -> {
+                    viewModel.refresh()
+                    onRequestParentRefresh()
+                    snackbarHostState.showSnackbar(
+                        message = context.getString(R.string.ads_offer_reject_success),
+                    )
+                }
+            }
+        }
+    }
+
     AnnouncementDetailsScreen(
         state = state,
+        offersState = offersState,
+        snackbarHostState = snackbarHostState,
         onBack = onBack,
         onRetry = viewModel::retry,
-        onRefresh = viewModel::refresh,
+        onRefresh = {
+            viewModel.refresh()
+            if (offersSection?.isVisible == true) {
+                offersViewModel.refresh()
+            }
+        },
+        onRetryOffers = offersViewModel::retry,
         onArchive = viewModel::archive,
         onDelete = viewModel::delete,
         onAppeal = viewModel::appeal,
         onCreateAgain = onCreateAgain,
         onDismissInlineMessage = viewModel::clearContentMessage,
+        onDismissOffersInlineMessage = offersViewModel::clearContentMessage,
+        onAcceptOffer = offersViewModel::acceptOffer,
+        onRejectOffer = offersViewModel::rejectOffer,
     )
 }
 
@@ -132,21 +185,35 @@ private data class PendingDetailAction(
     val title: String,
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
+private data class PendingOfferDecision(
+    val offerId: String,
+    val performerName: String,
+    val action: OfferDecisionAction,
+)
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun AnnouncementDetailsScreen(
     state: AnnouncementDetailsUiState,
+    offersState: AnnouncementOffersUiState,
+    snackbarHostState: SnackbarHostState,
     onBack: () -> Unit,
     onRetry: () -> Unit,
     onRefresh: () -> Unit,
+    onRetryOffers: () -> Unit,
     onArchive: () -> Unit,
     onDelete: () -> Unit,
     onAppeal: () -> Unit,
     onCreateAgain: (Announcement) -> Unit,
     onDismissInlineMessage: () -> Unit,
+    onDismissOffersInlineMessage: () -> Unit,
+    onAcceptOffer: (String) -> Unit,
+    onRejectOffer: (String) -> Unit,
 ) {
     var pendingAction by remember { mutableStateOf<PendingDetailAction?>(null) }
+    var pendingOfferDecision by remember { mutableStateOf<PendingOfferDecision?>(null) }
     var soonDialogMessageRes by remember { mutableStateOf<Int?>(null) }
+    val offerPerformerFallback = stringResource(R.string.ads_offer_performer_fallback)
 
     pendingAction?.let { action ->
         val titleRes = if (action.type == AnnouncementMutationType.Archive) {
@@ -195,6 +262,53 @@ private fun AnnouncementDetailsScreen(
         )
     }
 
+    pendingOfferDecision?.let { decision ->
+        val titleRes = if (decision.action == OfferDecisionAction.Accept) {
+            R.string.ads_offer_accept_dialog_title
+        } else {
+            R.string.ads_offer_reject_dialog_title
+        }
+        val bodyRes = if (decision.action == OfferDecisionAction.Accept) {
+            R.string.ads_offer_accept_dialog_message
+        } else {
+            R.string.ads_offer_reject_dialog_message
+        }
+        val confirmRes = if (decision.action == OfferDecisionAction.Accept) {
+            R.string.ads_offer_accept_action
+        } else {
+            R.string.ads_offer_reject_action
+        }
+
+        AlertDialog(
+            onDismissRequest = { pendingOfferDecision = null },
+            title = {
+                Text(text = stringResource(titleRes))
+            },
+            text = {
+                Text(text = stringResource(bodyRes, decision.performerName))
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (decision.action == OfferDecisionAction.Accept) {
+                            onAcceptOffer(decision.offerId)
+                        } else {
+                            onRejectOffer(decision.offerId)
+                        }
+                        pendingOfferDecision = null
+                    },
+                ) {
+                    Text(text = stringResource(confirmRes))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingOfferDecision = null }) {
+                    Text(text = stringResource(R.string.ads_action_cancel))
+                }
+            },
+        )
+    }
+
     soonDialogMessageRes?.let { messageRes ->
         AlertDialog(
             onDismissRequest = { soonDialogMessageRes = null },
@@ -216,6 +330,9 @@ private fun AnnouncementDetailsScreen(
         modifier = Modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState)
+        },
         topBar = {
             TopAppBar(
                 title = {
@@ -318,6 +435,7 @@ private fun AnnouncementDetailsScreen(
 
                         if (announcement != null) {
                             val images = announcement.imageUrls(state.apiBaseUrl)
+                            val offersSection = announcement.ownerOffersSectionPresentation()
 
                             if (images.isNotEmpty()) {
                                 item {
@@ -337,6 +455,36 @@ private fun AnnouncementDetailsScreen(
                                 AnnouncementStatusSection(
                                     announcement = announcement,
                                 )
+                            }
+
+                            if (offersSection != null) {
+                                item {
+                                    AnnouncementOffersSection(
+                                        announcement = announcement,
+                                        section = offersSection,
+                                        offersState = offersState,
+                                        onRetry = onRetryOffers,
+                                        onDismissInlineMessage = onDismissOffersInlineMessage,
+                                        onAccept = { offer ->
+                                            pendingOfferDecision = PendingOfferDecision(
+                                                offerId = offer.id,
+                                                performerName = offer.performerName(
+                                                    fallback = offerPerformerFallback,
+                                                ),
+                                                action = OfferDecisionAction.Accept,
+                                            )
+                                        },
+                                        onReject = { offer ->
+                                            pendingOfferDecision = PendingOfferDecision(
+                                                offerId = offer.id,
+                                                performerName = offer.performerName(
+                                                    fallback = offerPerformerFallback,
+                                                ),
+                                                action = OfferDecisionAction.Reject,
+                                            )
+                                        },
+                                    )
+                                }
                             }
 
                             item {
@@ -776,6 +924,365 @@ private fun AnnouncementMediaSection(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AnnouncementOffersSection(
+    announcement: Announcement,
+    section: OwnerOffersSectionPresentation,
+    offersState: AnnouncementOffersUiState,
+    onRetry: () -> Unit,
+    onDismissInlineMessage: () -> Unit,
+    onAccept: (AnnouncementOffer) -> Unit,
+    onReject: (AnnouncementOffer) -> Unit,
+) {
+    DetailsSectionCard(
+        title = stringResource(R.string.ads_offers_section_title),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    text = stringResource(section.summaryRes),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                val displayedCount = offersState.offers.size.takeIf { it > 0 } ?: announcement.offersCount
+                if (displayedCount > 0) {
+                    Text(
+                        text = stringResource(R.string.ads_offers_count, displayedCount),
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+
+            ToneBadge(
+                label = stringResource(section.stateLabelRes),
+                tone = section.stateTone,
+            )
+        }
+
+        if (!offersState.contentMessage.isNullOrBlank()) {
+            DetailsMessageCard(
+                title = stringResource(R.string.ads_inline_error_title),
+                message = offersState.contentMessage,
+                actionLabel = stringResource(R.string.ads_inline_error_dismiss),
+                onAction = onDismissInlineMessage,
+                tone = DetailsMessageTone.Warning,
+            )
+        }
+
+        when {
+            offersState.isInitialLoading && offersState.offers.isEmpty() -> {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(22.dp),
+                        strokeWidth = 2.dp,
+                    )
+                    Text(
+                        text = stringResource(R.string.ads_offers_loading),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            offersState.loadErrorMessage != null && offersState.offers.isEmpty() -> {
+                DetailsMessageCard(
+                    title = stringResource(R.string.ads_offers_error_title),
+                    message = offersState.loadErrorMessage,
+                    actionLabel = stringResource(R.string.root_retry),
+                    onAction = onRetry,
+                    tone = DetailsMessageTone.Error,
+                )
+            }
+
+            offersState.offers.isEmpty() -> {
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.32f),
+                ) {
+                    Column(
+                        modifier = Modifier.padding(MaterialTheme.spacing.large),
+                        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                    ) {
+                        Text(
+                            text = stringResource(
+                                if (section.acceptsNewOffers) {
+                                    R.string.ads_offers_empty_title
+                                } else {
+                                    R.string.ads_offers_closed_empty_title
+                                },
+                            ),
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = stringResource(
+                                if (section.acceptsNewOffers) {
+                                    R.string.ads_offers_empty_message
+                                } else {
+                                    R.string.ads_offers_closed_empty_message
+                                },
+                            ),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+
+            else -> {
+                if (offersState.isRefreshing) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                        )
+                        Text(
+                            text = stringResource(R.string.ads_offers_refreshing),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                ) {
+                    offersState.offers.forEach { offer ->
+                        OfferResponseCard(
+                            announcement = announcement,
+                            offer = offer,
+                            processingAction = offersState.processingActionFor(offer.id),
+                            onAccept = { onAccept(offer) },
+                            onReject = { onReject(offer) },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun OfferResponseCard(
+    announcement: Announcement,
+    offer: AnnouncementOffer,
+    processingAction: OfferDecisionAction?,
+    onAccept: () -> Unit,
+    onReject: () -> Unit,
+) {
+    val summary = offer.summaryPresentation()
+    val performerFallback = stringResource(R.string.ads_offer_performer_fallback)
+    val priceText = offer.formattedPriceText()
+    val status = offer.statusBadgePresentation()
+    val ratingText = offer.ratingText()
+    val completedCountText = offer.completedCountText()
+    val secondaryHintRes = offer.secondaryHintText()
+
+    Surface(
+        shape = RoundedCornerShape(26.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.34f),
+    ) {
+        Column(
+            modifier = Modifier.padding(MaterialTheme.spacing.large),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                verticalAlignment = Alignment.Top,
+            ) {
+                OfferAvatar(
+                    avatarUrl = offer.performer?.avatarUrl,
+                    initials = offer.performerInitials(
+                        fallback = stringResource(R.string.ads_offer_avatar_fallback),
+                    ),
+                    performerName = offer.performerName(fallback = performerFallback),
+                )
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        text = offer.performerName(fallback = performerFallback),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+
+                    offer.performerContextText()?.let { context ->
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Place,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Text(
+                                text = context,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+
+                Column(
+                    horizontalAlignment = Alignment.End,
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                ) {
+                    Text(
+                        text = priceText ?: stringResource(R.string.ads_offer_price_missing),
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = if (priceText == null) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.primary
+                        },
+                    )
+                    ToneBadge(
+                        label = stringResource(status.labelRes),
+                        tone = status.tone,
+                    )
+                }
+            }
+
+            Text(
+                text = summary.message ?: summary.fallbackRes?.let { stringResource(it) }.orEmpty(),
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+
+            secondaryHintRes?.let { hintRes ->
+                Text(
+                    text = stringResource(hintRes),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+            ) {
+                DetailsInfoChip(
+                    label = stringResource(offer.pricingModeLabelRes()),
+                    icon = Icons.Outlined.Inventory2,
+                )
+                DetailsInfoChip(
+                    label = offer.createdAtLabel(),
+                    icon = Icons.Outlined.Schedule,
+                )
+                ratingText?.let { rating ->
+                    DetailsInfoChip(
+                        label = stringResource(R.string.ads_offer_rating_chip, rating),
+                        icon = Icons.Rounded.Star,
+                    )
+                }
+                completedCountText?.let { completed ->
+                    DetailsInfoChip(
+                        label = stringResource(R.string.ads_offer_completed_chip, completed),
+                        icon = Icons.Outlined.TaskAlt,
+                    )
+                }
+            }
+
+            if (offer.canAcceptFromOwner(announcement) || offer.canRejectFromOwner(announcement)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                ) {
+                    OutlinedButton(
+                        modifier = Modifier.weight(1f),
+                        enabled = processingAction == null,
+                        onClick = onReject,
+                    ) {
+                        if (processingAction == OfferDecisionAction.Reject) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                            )
+                        } else {
+                            Text(text = stringResource(R.string.ads_offer_reject_action))
+                        }
+                    }
+                    Button(
+                        modifier = Modifier.weight(1f),
+                        enabled = processingAction == null,
+                        onClick = onAccept,
+                    ) {
+                        if (processingAction == OfferDecisionAction.Accept) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = Color.White,
+                            )
+                        } else {
+                            Text(text = stringResource(R.string.ads_offer_accept_action))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OfferAvatar(
+    avatarUrl: String?,
+    initials: String,
+    performerName: String,
+) {
+    if (avatarUrl != null) {
+        AsyncImage(
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)),
+            model = avatarUrl,
+            contentDescription = stringResource(R.string.ads_offer_avatar_description, performerName),
+            contentScale = ContentScale.Crop,
+        )
+    } else {
+        Surface(
+            modifier = Modifier.size(56.dp),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primaryContainer,
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(
+                    imageVector = Icons.Outlined.Person,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.28f),
+                    modifier = Modifier.size(28.dp),
+                )
+                Text(
+                    text = initials,
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun AnnouncementActionsSection(
     announcement: Announcement,
@@ -988,7 +1495,18 @@ private fun DetailsFieldRow(
 private fun DetailsStatusBadge(
     presentation: AnnouncementStatusPresentation,
 ) {
-    val containerColor = presentation.tone.containerColor(
+    ToneBadge(
+        label = stringResource(presentation.labelRes),
+        tone = presentation.tone,
+    )
+}
+
+@Composable
+private fun ToneBadge(
+    label: String,
+    tone: AnnouncementStatusTone,
+) {
+    val containerColor = tone.containerColor(
         accentColor = MaterialTheme.colorScheme.primary,
         infoColor = MaterialTheme.colorScheme.secondary,
         positiveColor = Color(0xFF5E9C76),
@@ -1003,7 +1521,7 @@ private fun DetailsStatusBadge(
     ) {
         Text(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-            text = stringResource(presentation.labelRes),
+            text = label,
             style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
             color = Color.White,
         )

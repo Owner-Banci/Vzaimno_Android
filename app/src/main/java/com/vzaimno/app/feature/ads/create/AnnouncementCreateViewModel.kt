@@ -104,13 +104,25 @@ class AnnouncementCreateViewModel @Inject constructor(
 
     fun onSourceAddressChanged(value: String) {
         updateDraft { draft ->
-            draft.copy(source = draft.source.copy(address = value))
+            draft.copy(
+                source = draft.source.copy(
+                    address = value,
+                    placeId = null,
+                    point = null,
+                ),
+            )
         }
     }
 
     fun onDestinationAddressChanged(value: String) {
         updateDraft { draft ->
-            draft.copy(destination = draft.destination.copy(address = value))
+            draft.copy(
+                destination = draft.destination.copy(
+                    address = value,
+                    placeId = null,
+                    point = null,
+                ),
+            )
         }
     }
 
@@ -266,6 +278,12 @@ class AnnouncementCreateViewModel @Inject constructor(
             draft.copy(
                 media = draft.media.filterNot { it.id == mediaId },
             )
+        }
+    }
+
+    fun toggleSummaryExpanded() {
+        _uiState.update { state ->
+            state.copy(isSummaryExpanded = !state.isSummaryExpanded)
         }
     }
 

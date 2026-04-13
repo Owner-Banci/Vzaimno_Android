@@ -34,6 +34,7 @@ import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.PhotoCameraBack
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -202,7 +203,9 @@ private fun MyAnnouncementsScreen(
             .background(MaterialTheme.colorScheme.background),
     ) {
         PullToRefreshBox(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(bottom = 72.dp),
             isRefreshing = state.isRefreshing,
             onRefresh = onRefresh,
         ) {
@@ -225,7 +228,7 @@ private fun MyAnnouncementsScreen(
                 item {
                     Text(
                         text = stringResource(R.string.ads_screen_title),
-                        style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.headlineLarge,
                         color = MaterialTheme.colorScheme.onBackground,
                     )
                 }
@@ -333,13 +336,33 @@ private fun MyAnnouncementsScreen(
                         }
                     }
                 }
+            }
+        }
 
-                if (state.screenState != AdsScreenState.Loading) {
-                    item {
-                        CreateAnnouncementEntryCard(
-                            onClick = onOpenCreate,
-                        )
-                    }
+        // Pinned bottom button
+        if (state.screenState != AdsScreenState.Loading) {
+            Surface(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth(),
+                color = MaterialTheme.colorScheme.background.copy(alpha = 0.97f),
+                shadowElevation = 8.dp,
+            ) {
+                Button(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = MaterialTheme.spacing.xLarge, vertical = 12.dp),
+                    onClick = onOpenCreate,
+                    shape = RoundedCornerShape(16.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.AddCircleOutline,
+                        contentDescription = null,
+                    )
+                    Text(
+                        modifier = Modifier.padding(start = 8.dp),
+                        text = stringResource(R.string.ads_create_entry_button),
+                    )
                 }
             }
         }
@@ -348,17 +371,15 @@ private fun MyAnnouncementsScreen(
 
 @Composable
 private fun AdsSummaryCard(summary: AdsSummaryUi) {
-    Card(
+    Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 1.dp,
     ) {
         Column(
-            modifier = Modifier.padding(MaterialTheme.spacing.large),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
                 text = stringResource(R.string.ads_summary_title),
@@ -367,7 +388,7 @@ private fun AdsSummaryCard(summary: AdsSummaryUi) {
             )
 
             Row(
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 AdsStatTile(
                     modifier = Modifier.weight(1f),
@@ -399,29 +420,30 @@ private fun AdsStatTile(
 ) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(16.dp),
         color = if (accent) {
-            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f)
+            MaterialTheme.colorScheme.primaryContainer
         } else {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+            MaterialTheme.colorScheme.surfaceContainerHigh
         },
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 16.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 14.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.labelMedium,
                 color = if (accent) {
-                    MaterialTheme.colorScheme.tertiary
+                    MaterialTheme.colorScheme.primary
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 },
             )
             Text(
                 text = value.toString(),
-                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurface,
             )
         }
@@ -479,20 +501,20 @@ private fun AnnouncementListCard(
     val decisionSummary = announcementDecisionSummaryText(announcement)
     var menuExpanded by remember { mutableStateOf(false) }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface,
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(24.dp))
+            .clickable(enabled = !isMutating, onClick = onClick),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 1.dp,
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(enabled = !isMutating, onClick = onClick)
-                .padding(MaterialTheme.spacing.large),
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
+                .padding(14.dp),
+            horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             AnnouncementPreview(
                 modifier = Modifier.size(96.dp),
@@ -514,7 +536,7 @@ private fun AnnouncementListCard(
                     ) {
                         Text(
                             text = announcement.title,
-                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                             color = MaterialTheme.colorScheme.onSurface,
                         )
                         Text(

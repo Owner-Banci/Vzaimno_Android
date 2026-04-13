@@ -1,0 +1,9 @@
+## Copy the needed lines into your untracked local.properties file.
+## Keep real keys out of version control.
+
+# Shared key for all build types:
+vzaimno.yandexMapkitApiKey=fb1e46c5-6b06-49f7-852a-954a0a9f0b47
+
+# Optional per-build-type overrides:
+# vzaimno.yandexMapkitApiKey.debug=fb1e46c5-6b06-49f7-852a-954a0a9f0b47
+# vzaimno.yandexMapkitApiKey.release=fb1e46c5-6b06-49f7-852a-954a0a9f0b47

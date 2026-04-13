@@ -3,8 +3,18 @@ package com.vzaimno.app.feature.ads.create
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +23,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,48 +36,46 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.AddPhotoAlternate
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Close
-import androidx.compose.material.icons.outlined.LocalOffer
+import androidx.compose.material.icons.outlined.Error
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.MyLocation
-import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material.icons.outlined.Route
-import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
@@ -74,6 +83,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -84,6 +94,13 @@ import com.vzaimno.app.core.model.AnnouncementStructuredData
 import com.vzaimno.app.feature.ads.AdsFilterBucket
 import com.vzaimno.app.feature.shell.navigation.HideShellBottomBarEffect
 import kotlinx.coroutines.flow.collectLatest
+
+private val MilkBackground = Color(0xFFF5F2ED)
+private val TurquoiseAccent = Color(0xFF2BA8A4)
+private val TurquoiseLight = Color(0xFFD6F5F3)
+private val TurquoiseBorder = Color(0xFF5ECFCB)
+private val CardWhite = Color(0xFFFFFFFF)
+private val SectionCardShape = RoundedCornerShape(18.dp)
 
 @Composable
 fun AnnouncementCreateRoute(
@@ -108,7 +125,6 @@ fun AnnouncementCreateRoute(
     AnnouncementCreateScreen(
         state = state,
         onBack = onBack,
-        onMainGroupSelected = viewModel::onMainGroupSelected,
         onActionTypeSelected = viewModel::onActionTypeSelected,
         onTitleChanged = viewModel::onTitleChanged,
         onItemTypeSelected = viewModel::onItemTypeSelected,
@@ -119,8 +135,6 @@ fun AnnouncementCreateRoute(
         onUrgencySelected = viewModel::onUrgencySelected,
         onSourceAddressChanged = viewModel::onSourceAddressChanged,
         onDestinationAddressChanged = viewModel::onDestinationAddressChanged,
-        onBudgetModeSelected = viewModel::onBudgetModeSelected,
-        onBudgetAmountChanged = viewModel::onBudgetAmountChanged,
         onBudgetMinChanged = viewModel::onBudgetMinChanged,
         onBudgetMaxChanged = viewModel::onBudgetMaxChanged,
         onTaskBriefChanged = viewModel::onTaskBriefChanged,
@@ -142,6 +156,7 @@ fun AnnouncementCreateRoute(
         },
         onRemoveMedia = viewModel::removeMedia,
         onDismissMessage = viewModel::clearInlineMessage,
+        onToggleSummary = viewModel::toggleSummaryExpanded,
         onSubmit = viewModel::submit,
     )
 }
@@ -151,7 +166,6 @@ fun AnnouncementCreateRoute(
 private fun AnnouncementCreateScreen(
     state: AnnouncementCreateUiState,
     onBack: () -> Unit,
-    onMainGroupSelected: (AnnouncementMainGroup) -> Unit,
     onActionTypeSelected: (AnnouncementStructuredData.ActionType) -> Unit,
     onTitleChanged: (String) -> Unit,
     onItemTypeSelected: (AnnouncementCreateItemType?) -> Unit,
@@ -162,8 +176,6 @@ private fun AnnouncementCreateScreen(
     onUrgencySelected: (AnnouncementStructuredData.Urgency) -> Unit,
     onSourceAddressChanged: (String) -> Unit,
     onDestinationAddressChanged: (String) -> Unit,
-    onBudgetModeSelected: (AnnouncementBudgetMode) -> Unit,
-    onBudgetAmountChanged: (String) -> Unit,
     onBudgetMinChanged: (String) -> Unit,
     onBudgetMaxChanged: (String) -> Unit,
     onTaskBriefChanged: (String) -> Unit,
@@ -181,335 +193,265 @@ private fun AnnouncementCreateScreen(
     onPickMedia: () -> Unit,
     onRemoveMedia: (String) -> Unit,
     onDismissMessage: () -> Unit,
+    onToggleSummary: () -> Unit,
     onSubmit: () -> Unit,
 ) {
     HideShellBottomBarEffect(reason = "ads_create")
 
-    val backgroundBrush = Brush.verticalGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.34f),
-            MaterialTheme.colorScheme.background,
-            MaterialTheme.colorScheme.background,
-        ),
-    )
+    val draft = state.draft
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = MilkBackground,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = stringResource(
-                            if (state.isCreateAgain) {
-                                R.string.ads_create_again_title
-                            } else {
-                                R.string.ads_create_title
-                            },
-                        ),
-                    )
-                },
-                navigationIcon = {
-                    IconButton(
-                        enabled = !state.isSubmitting,
-                        onClick = onBack,
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                            contentDescription = stringResource(R.string.ads_back),
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                ),
-            )
-        },
-        bottomBar = {
-            Surface(
-                tonalElevation = 3.dp,
-                shadowElevation = 6.dp,
-                color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
-            ) {
-                Button(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .imePadding()
-                        .padding(horizontal = MaterialTheme.spacing.xLarge)
-                        .padding(top = MaterialTheme.spacing.medium, bottom = MaterialTheme.spacing.large)
-                        .height(56.dp),
-                    enabled = !state.isBusy,
-                    onClick = onSubmit,
-                ) {
-                    if (state.isSubmitting) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                        )
-                    } else {
-                        Text(text = stringResource(R.string.ads_create_submit))
-                    }
-                }
+            // Sticky mini summary is part of the top bar area
+            Column {
+                TopAppBar(
+                    title = {},
+                    navigationIcon = {
+                        IconButton(
+                            enabled = !state.isSubmitting,
+                            onClick = onBack,
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                                contentDescription = stringResource(R.string.ads_back),
+                            )
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color.Transparent,
+                    ),
+                )
+                // Pinned sticky summary - always visible
+                StickyMiniSummary(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                    draft = draft,
+                    isExpanded = state.isSummaryExpanded,
+                    onToggle = onToggleSummary,
+                )
             }
         },
     ) { innerPadding ->
-        Box(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .background(backgroundBrush)
-                .padding(innerPadding),
+                .padding(innerPadding)
+                .windowInsetsPadding(
+                    WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
+                )
+                .imePadding(),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                top = 8.dp,
+                end = 16.dp,
+                bottom = 48.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .windowInsetsPadding(
-                        WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
-                    )
-                    .imePadding(),
-                contentPadding = PaddingValues(
-                    start = MaterialTheme.spacing.xLarge,
-                    top = MaterialTheme.spacing.medium,
-                    end = MaterialTheme.spacing.xLarge,
-                    bottom = 148.dp,
-                ),
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
-            ) {
+            // Inline message
+            if (!state.inlineMessage.isNullOrBlank()) {
                 item {
-                    CreateHeroCard(
-                        state = state,
+                    CreateInlineMessageCard(
+                        message = state.inlineMessage,
+                        onDismiss = onDismissMessage,
                     )
                 }
+            }
 
-                if (!state.inlineMessage.isNullOrBlank()) {
-                    item {
-                        CreateInlineMessageCard(
-                            message = state.inlineMessage,
-                            onDismiss = onDismissMessage,
-                        )
-                    }
-                }
-
-                if (state.isPrefillLoading) {
-                    item {
-                        CreateLoadingCard(
-                            message = stringResource(R.string.ads_create_prefill_loading),
-                        )
-                    }
-                }
-
+            // Prefill loading
+            if (state.isPrefillLoading) {
                 item {
-                    CreateSectionCard(
-                        title = stringResource(R.string.ads_create_section_main),
-                    ) {
-                        CreateSegmentedButtons(
-                            values = AnnouncementMainGroup.entries,
-                            selectedValue = state.draft.mainGroup,
-                            label = { item -> stringResource(item.titleRes) },
-                            onSelected = onMainGroupSelected,
-                        )
-
-                        SelectionChipGroup(
-                            title = stringResource(R.string.ads_create_action_label),
-                            values = state.draft.availableActionTypes,
-                            selectedValue = state.draft.actionType,
-                            label = { item -> item.title },
-                            onSelected = { actionType ->
-                                onActionTypeSelected(actionType)
-                            },
-                        )
-
-                        CreateTextField(
-                            value = state.draft.title,
-                            onValueChange = onTitleChanged,
-                            label = stringResource(R.string.ads_field_title),
-                            placeholder = stringResource(R.string.ads_create_title_placeholder),
-                            error = state.fieldErrors.title,
-                        )
-                    }
+                    CreateLoadingCard(
+                        message = stringResource(R.string.ads_create_prefill_loading),
+                    )
                 }
+            }
 
+            // Header
+            item {
+                Column(
+                    modifier = Modifier.padding(bottom = 4.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.ads_create_flow_header),
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Text(
+                        text = stringResource(R.string.ads_create_flow_subheader),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            // 1. Action/Scenario Selection
+            item {
+                FlowSectionCard(
+                    title = stringResource(R.string.ads_create_flow_action_section),
+                    subtitle = stringResource(R.string.ads_create_flow_action_hint),
+                ) {
+                    ActionTypeGrid(
+                        selectedAction = draft.actionType,
+                        onActionSelected = onActionTypeSelected,
+                    )
+                }
+            }
+
+            // Structured sections
+            if (draft.actionType != null) {
+                // 2. Object Section
                 item {
-                    CreateSectionCard(
-                        title = stringResource(R.string.ads_create_section_object),
+                    FlowSectionCard(
+                        title = stringResource(R.string.ads_create_flow_object_section),
                     ) {
-                        when (state.draft.actionType) {
+                        when (draft.actionType) {
                             AnnouncementStructuredData.ActionType.Pickup,
                             AnnouncementStructuredData.ActionType.Carry,
-                            -> SelectionChipGroup(
-                                title = stringResource(R.string.ads_field_item_type),
-                                values = state.draft.availableItemTypes,
-                                selectedValue = state.draft.itemType,
-                                label = { item -> stringResource(item.titleRes) },
+                            -> FlowChipGroup(
+                                values = draft.availableItemTypes,
+                                selectedValue = draft.itemType,
+                                label = { stringResource(it.titleRes) },
                                 onSelected = onItemTypeSelected,
                             )
 
-                            AnnouncementStructuredData.ActionType.Buy -> SelectionChipGroup(
-                                title = stringResource(R.string.ads_field_purchase_type),
+                            AnnouncementStructuredData.ActionType.Buy -> FlowChipGroup(
                                 values = AnnouncementCreatePurchaseType.entries,
-                                selectedValue = state.draft.purchaseType,
-                                label = { item -> stringResource(item.titleRes) },
+                                selectedValue = draft.purchaseType,
+                                label = { stringResource(it.titleRes) },
                                 onSelected = onPurchaseTypeSelected,
                             )
 
-                            AnnouncementStructuredData.ActionType.ProHelp -> SelectionChipGroup(
-                                title = stringResource(R.string.ads_field_help_type),
+                            AnnouncementStructuredData.ActionType.ProHelp -> FlowChipGroup(
                                 values = AnnouncementCreateHelpType.entries,
-                                selectedValue = state.draft.helpType,
-                                label = { item -> stringResource(item.titleRes) },
+                                selectedValue = draft.helpType,
+                                label = { stringResource(it.titleRes) },
                                 onSelected = onHelpTypeSelected,
                             )
 
                             else -> Unit
                         }
 
-                        if (state.draft.showsTaskBriefField) {
-                            CreateTextField(
-                                value = state.draft.taskBrief,
+                        if (draft.showsTaskBriefField) {
+                            FlowTextField(
+                                value = draft.taskBrief,
                                 onValueChange = onTaskBriefChanged,
                                 label = stringResource(R.string.ads_field_task_brief),
-                                placeholder = stringResource(taskBriefPlaceholderRes(state.draft.actionType)),
+                                placeholder = stringResource(taskBriefPlaceholderRes(draft.actionType)),
                                 error = state.fieldErrors.taskBrief,
                             )
                         }
-
-                        CreateTextField(
-                            value = state.draft.notes,
-                            onValueChange = onNotesChanged,
-                            label = stringResource(R.string.ads_field_description),
-                            placeholder = stringResource(R.string.ads_create_notes_placeholder),
-                            minLines = 4,
-                            maxLines = 6,
-                        )
                     }
                 }
 
+                // 3. Source Section
                 item {
-                    CreateSectionCard(
-                        title = stringResource(R.string.ads_create_section_route),
-                        icon = Icons.Outlined.Route,
+                    FlowSectionCard(
+                        title = stringResource(R.string.ads_create_flow_source_section),
                     ) {
-                        SelectionChipGroup(
-                            title = stringResource(R.string.ads_field_source_kind),
-                            values = state.draft.availableSourceKinds,
-                            selectedValue = state.draft.sourceKind,
-                            label = { item -> item.title },
+                        FlowChipGroup(
+                            values = draft.availableSourceKinds,
+                            selectedValue = draft.sourceKind,
+                            label = { it.title },
                             onSelected = onSourceKindSelected,
                         )
-
-                        CreateTextField(
-                            value = state.draft.source.address,
+                        FlowTextField(
+                            value = draft.source.address,
                             onValueChange = onSourceAddressChanged,
                             label = stringResource(R.string.ads_field_source_address),
-                            placeholder = stringResource(sourceAddressPlaceholderRes(state.draft.actionType)),
+                            placeholder = stringResource(sourceAddressPlaceholderRes(draft.actionType)),
                             error = state.fieldErrors.sourceAddress,
                             leadingIcon = {
                                 Icon(
                                     imageVector = Icons.Outlined.MyLocation,
                                     contentDescription = null,
+                                    tint = TurquoiseAccent,
                                 )
                             },
                         )
+                    }
+                }
 
-                        if (state.draft.showsDestinationSection) {
-                            SelectionChipGroup(
-                                title = stringResource(R.string.ads_field_destination_kind),
-                                values = state.draft.availableDestinationKinds,
-                                selectedValue = state.draft.destinationKind,
-                                label = { item -> item.title },
+                // 4. Destination Section
+                if (draft.showsDestinationSection) {
+                    item {
+                        FlowSectionCard(
+                            title = stringResource(R.string.ads_create_flow_destination_section),
+                        ) {
+                            FlowChipGroup(
+                                values = draft.availableDestinationKinds,
+                                selectedValue = draft.destinationKind,
+                                label = { it.title },
                                 onSelected = onDestinationKindSelected,
                             )
-
-                            CreateTextField(
-                                value = state.draft.destination.address,
+                            FlowTextField(
+                                value = draft.destination.address,
                                 onValueChange = onDestinationAddressChanged,
                                 label = stringResource(R.string.ads_field_destination_address),
-                                placeholder = stringResource(destinationAddressPlaceholderRes(state.draft.actionType)),
+                                placeholder = stringResource(destinationAddressPlaceholderRes(draft.actionType)),
                                 error = state.fieldErrors.destinationAddress,
                                 leadingIcon = {
                                     Icon(
                                         imageVector = Icons.Outlined.Route,
                                         contentDescription = null,
+                                        tint = TurquoiseAccent,
                                     )
                                 },
                             )
                         }
+                    }
+                }
 
-                        SelectionChipGroup(
-                            title = stringResource(R.string.ads_field_urgency),
+                // 5. When Section
+                item {
+                    FlowSectionCard(
+                        title = stringResource(R.string.ads_create_flow_when_section),
+                    ) {
+                        FlowChipGroup(
                             values = AnnouncementStructuredData.Urgency.entries,
-                            selectedValue = state.draft.urgency,
-                            label = { item -> item.title },
+                            selectedValue = draft.urgency,
+                            label = { it.title },
                             onSelected = onUrgencySelected,
                         )
                     }
                 }
 
-                item {
-                    CreateSectionCard(
-                        title = stringResource(R.string.ads_create_section_budget),
-                        icon = Icons.Outlined.LocalOffer,
-                    ) {
-                        CreateSegmentedButtons(
-                            values = AnnouncementBudgetMode.entries,
-                            selectedValue = state.draft.budget.mode,
-                            label = { item -> stringResource(item.titleRes) },
-                            onSelected = onBudgetModeSelected,
-                        )
-
-                        if (state.draft.budget.mode == AnnouncementBudgetMode.Fixed) {
-                            CreateTextField(
-                                value = state.draft.budget.amount,
-                                onValueChange = onBudgetAmountChanged,
-                                label = stringResource(R.string.ads_create_budget_amount_label),
-                                placeholder = stringResource(R.string.ads_create_budget_amount_placeholder),
-                                keyboardType = KeyboardType.Number,
-                                error = state.fieldErrors.budgetAmount,
-                            )
-                        } else {
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                // 6. Conditions Section
+                if (draft.availableAttributeToggles.isNotEmpty()) {
+                    item {
+                        FlowSectionCard(
+                            title = stringResource(R.string.ads_create_flow_conditions_section),
+                            subtitle = stringResource(R.string.ads_create_flow_conditions_hint),
+                        ) {
+                            Column(
+                                verticalArrangement = Arrangement.spacedBy(2.dp),
                             ) {
-                                CreateTextField(
-                                    modifier = Modifier.weight(1f),
-                                    value = state.draft.budget.min,
-                                    onValueChange = onBudgetMinChanged,
-                                    label = stringResource(R.string.ads_create_budget_min_label),
-                                    placeholder = stringResource(R.string.ads_create_budget_min_placeholder),
+                                draft.availableAttributeToggles.forEach { toggle ->
+                                    ConditionToggleRow(
+                                        title = stringResource(toggle.titleRes),
+                                        checked = draft.attributes.valueFor(toggle),
+                                        onCheckedChange = { enabled ->
+                                            onAttributeToggleChanged(toggle, enabled)
+                                        },
+                                    )
+                                }
+                            }
+                            if (draft.attributes.requiresLiftToFloor) {
+                                FlowTextField(
+                                    value = draft.attributes.floor,
+                                    onValueChange = onFloorChanged,
+                                    label = stringResource(R.string.ads_create_floor_label),
+                                    placeholder = stringResource(R.string.ads_create_floor_placeholder),
                                     keyboardType = KeyboardType.Number,
-                                    error = state.fieldErrors.budgetMin,
-                                )
-                                CreateTextField(
-                                    modifier = Modifier.weight(1f),
-                                    value = state.draft.budget.max,
-                                    onValueChange = onBudgetMaxChanged,
-                                    label = stringResource(R.string.ads_create_budget_max_label),
-                                    placeholder = stringResource(R.string.ads_create_budget_max_placeholder),
-                                    keyboardType = KeyboardType.Number,
-                                    error = state.fieldErrors.budgetMax,
+                                    error = state.fieldErrors.floor,
                                 )
                             }
-                        }
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-                        ) {
-                            CreateTextField(
-                                modifier = Modifier.weight(1f),
-                                value = state.draft.attributes.estimatedTaskMinutes,
-                                onValueChange = onEstimatedTaskMinutesChanged,
-                                label = stringResource(R.string.ads_field_duration),
-                                placeholder = stringResource(R.string.ads_create_duration_placeholder),
-                                keyboardType = KeyboardType.Number,
-                                error = state.fieldErrors.estimatedTaskMinutes,
-                            )
-
-                            if (state.draft.attributes.waitOnSite) {
-                                CreateTextField(
-                                    modifier = Modifier.weight(1f),
-                                    value = state.draft.attributes.waitingMinutes,
+                            if (draft.attributes.waitOnSite) {
+                                FlowTextField(
+                                    value = draft.attributes.waitingMinutes,
                                     onValueChange = onWaitingMinutesChanged,
                                     label = stringResource(R.string.ads_field_waiting),
                                     placeholder = stringResource(R.string.ads_create_waiting_placeholder),
@@ -521,150 +463,190 @@ private fun AnnouncementCreateScreen(
                     }
                 }
 
-                item {
-                    CreateSectionCard(
-                        title = stringResource(R.string.ads_create_section_attributes),
-                        icon = Icons.Outlined.Tune,
-                    ) {
-                        if (state.draft.actionType in setOf(
-                                AnnouncementStructuredData.ActionType.Pickup,
-                                AnnouncementStructuredData.ActionType.Buy,
-                                AnnouncementStructuredData.ActionType.Carry,
-                            )
+                // 7. Cargo Section
+                if (draft.actionType in setOf(
+                        AnnouncementStructuredData.ActionType.Pickup,
+                        AnnouncementStructuredData.ActionType.Buy,
+                        AnnouncementStructuredData.ActionType.Carry,
+                    )
+                ) {
+                    item {
+                        FlowSectionCard(
+                            title = stringResource(R.string.ads_create_flow_cargo_section),
                         ) {
-                            SelectionChipGroup(
+                            FlowChipGroup(
                                 title = stringResource(R.string.ads_field_weight),
                                 values = AnnouncementStructuredData.WeightCategory.entries,
-                                selectedValue = state.draft.attributes.weightCategory,
-                                label = { item -> item.title },
+                                selectedValue = draft.attributes.weightCategory,
+                                label = { it.title },
                                 onSelected = onWeightCategorySelected,
                             )
-
-                            SelectionChipGroup(
+                            FlowChipGroup(
                                 title = stringResource(R.string.ads_field_size),
                                 values = AnnouncementStructuredData.SizeCategory.entries,
-                                selectedValue = state.draft.attributes.sizeCategory,
-                                label = { item -> item.title },
+                                selectedValue = draft.attributes.sizeCategory,
+                                label = { it.title },
                                 onSelected = onSizeCategorySelected,
-                            )
-                        }
-
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-                        ) {
-                            state.draft.availableAttributeToggles.forEach { toggle ->
-                                AttributeToggleRow(
-                                    title = stringResource(toggle.titleRes),
-                                    checked = state.draft.attributes.valueFor(toggle),
-                                    onCheckedChange = { enabled ->
-                                        onAttributeToggleChanged(toggle, enabled)
-                                    },
-                                )
-                            }
-                        }
-
-                        if (state.draft.attributes.requiresLiftToFloor) {
-                            CreateTextField(
-                                value = state.draft.attributes.floor,
-                                onValueChange = onFloorChanged,
-                                label = stringResource(R.string.ads_create_floor_label),
-                                placeholder = stringResource(R.string.ads_create_floor_placeholder),
-                                keyboardType = KeyboardType.Number,
-                                error = state.fieldErrors.floor,
                             )
                         }
                     }
                 }
 
+                // 8. Price Section - RANGE ONLY, no Fixed
                 item {
-                    CreateSectionCard(
-                        title = stringResource(R.string.ads_create_section_contacts),
-                        icon = Icons.Outlined.Phone,
+                    val recommendedPrice = draft.recommendedPriceRange()
+                    FlowSectionCard(
+                        title = stringResource(R.string.ads_create_flow_price_section),
+                        subtitle = stringResource(R.string.ads_create_flow_price_hint),
                     ) {
-                        CreateTextField(
-                            value = state.draft.contacts.name,
+                        // Recommended price
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            color = TurquoiseLight,
+                            border = BorderStroke(1.dp, TurquoiseBorder.copy(alpha = 0.3f)),
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.ads_create_flow_recommended_price),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = TurquoiseAccent,
+                                )
+                                Text(
+                                    text = recommendedPrice.text,
+                                    style = MaterialTheme.typography.headlineMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                    ),
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                )
+                                Text(
+                                    text = stringResource(R.string.ads_create_flow_price_disclaimer),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+
+                        // Range only: От / До
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            FlowTextField(
+                                modifier = Modifier.weight(1f),
+                                value = draft.budget.min,
+                                onValueChange = onBudgetMinChanged,
+                                label = stringResource(R.string.ads_create_budget_min_label),
+                                placeholder = "${recommendedPrice.min}",
+                                keyboardType = KeyboardType.Number,
+                                error = state.fieldErrors.budgetMin,
+                            )
+                            FlowTextField(
+                                modifier = Modifier.weight(1f),
+                                value = draft.budget.max,
+                                onValueChange = onBudgetMaxChanged,
+                                label = stringResource(R.string.ads_create_budget_max_label),
+                                placeholder = "${recommendedPrice.max}",
+                                keyboardType = KeyboardType.Number,
+                                error = state.fieldErrors.budgetMax,
+                            )
+                        }
+                    }
+                }
+
+                // 9. Contact Section
+                item {
+                    FlowSectionCard(
+                        title = stringResource(R.string.ads_create_flow_contact_section),
+                    ) {
+                        FlowTextField(
+                            value = draft.contacts.name,
                             onValueChange = onContactNameChanged,
                             label = stringResource(R.string.ads_create_contact_name_label),
                             placeholder = stringResource(R.string.ads_create_contact_name_placeholder),
                         )
-
-                        CreateTextField(
-                            value = state.draft.contacts.phone,
+                        FlowTextField(
+                            value = draft.contacts.phone,
                             onValueChange = onContactPhoneChanged,
                             label = stringResource(R.string.ads_create_contact_phone_label),
                             placeholder = stringResource(R.string.ads_create_contact_phone_placeholder),
                             keyboardType = KeyboardType.Phone,
                             error = state.fieldErrors.contactPhone,
                         )
-
-                        SelectionChipGroup(
-                            title = stringResource(R.string.ads_create_contact_method_label),
+                        FlowChipGroup(
                             values = AnnouncementContactMethod.entries,
-                            selectedValue = state.draft.contacts.method,
-                            label = { item -> stringResource(item.titleRes) },
+                            selectedValue = draft.contacts.method,
+                            label = { stringResource(it.titleRes) },
                             onSelected = onContactMethodSelected,
                         )
-
-                        SelectionChipGroup(
-                            title = stringResource(R.string.ads_create_audience_label),
+                        FlowChipGroup(
                             values = AnnouncementAudience.entries,
-                            selectedValue = state.draft.contacts.audience,
-                            label = { item -> stringResource(item.titleRes) },
+                            selectedValue = draft.contacts.audience,
+                            label = { stringResource(it.titleRes) },
                             onSelected = onAudienceSelected,
                         )
                     }
                 }
 
+                // 10. Additional (Title + Description + Media)
                 item {
-                    CreateSectionCard(
-                        title = stringResource(R.string.ads_media_section_title),
-                        icon = Icons.Outlined.AddPhotoAlternate,
+                    FlowSectionCard(
+                        title = stringResource(R.string.ads_create_flow_additional_section),
                     ) {
+                        // Title is auto-filled, user can optionally edit
+                        FlowTextField(
+                            value = draft.title,
+                            onValueChange = onTitleChanged,
+                            label = stringResource(R.string.ads_field_title),
+                            placeholder = draft.generatedTitle(),
+                        )
+                        // Description
+                        FlowTextField(
+                            value = draft.notes,
+                            onValueChange = onNotesChanged,
+                            label = stringResource(R.string.ads_field_description),
+                            placeholder = stringResource(R.string.ads_create_notes_placeholder),
+                            minLines = 3,
+                            maxLines = 5,
+                        )
+                        // Media
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Column(
+                            Text(
+                                text = stringResource(R.string.ads_create_media_caption),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.spacedBy(4.dp),
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.ads_create_media_caption),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                Text(
-                                    text = stringResource(R.string.ads_create_media_limit, 8),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-
+                            )
                             Button(
                                 enabled = !state.isBusy,
                                 onClick = onPickMedia,
+                                colors = ButtonDefaults.buttonColors(containerColor = TurquoiseAccent),
+                                shape = RoundedCornerShape(14.dp),
                             ) {
                                 Icon(
                                     imageVector = Icons.Outlined.AddPhotoAlternate,
                                     contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
                                 )
+                                Spacer(modifier = Modifier.width(6.dp))
                                 Text(
-                                    modifier = Modifier.padding(start = 8.dp),
                                     text = stringResource(R.string.ads_create_media_button),
+                                    style = MaterialTheme.typography.labelLarge,
                                 )
                             }
                         }
-
-                        if (state.draft.media.isNotEmpty()) {
+                        if (draft.media.isNotEmpty()) {
                             LazyRow(
-                                contentPadding = PaddingValues(vertical = MaterialTheme.spacing.small),
-                                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                                contentPadding = PaddingValues(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
                             ) {
-                                items(
-                                    items = state.draft.media,
-                                    key = { media -> media.id },
-                                ) { media ->
+                                items(items = draft.media, key = { it.id }) { media ->
                                     MediaPreviewCard(
                                         media = media,
                                         onRemove = { onRemoveMedia(media.id) },
@@ -674,229 +656,431 @@ private fun AnnouncementCreateScreen(
                         }
                     }
                 }
-            }
-        }
-    }
-}
 
-@Composable
-private fun CreateHeroCard(
-    state: AnnouncementCreateUiState,
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(32.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.tertiary.copy(alpha = 0.9f),
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.88f),
-                        ),
-                    ),
-                )
-                .padding(MaterialTheme.spacing.xLarge),
-        ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-            ) {
-                Text(
-                    text = stringResource(R.string.shell_brand_caption),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = Color.White.copy(alpha = 0.9f),
-                )
-                Text(
-                    text = stringResource(
-                        if (state.isCreateAgain) {
-                            R.string.ads_create_again_hero_title
-                        } else {
-                            R.string.ads_create_hero_title
-                        },
-                    ),
-                    style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White,
-                )
-                Text(
-                    text = if (!state.prefillSourceTitle.isNullOrBlank()) {
-                        stringResource(R.string.ads_create_again_hero_body_with_title, state.prefillSourceTitle)
+                // 11. Final Summary Card
+                item { FinalSummaryCard(draft = draft) }
+
+                // 12. Readiness or Submit
+                item {
+                    val issues = draft.readinessIssues()
+                    if (issues.isNotEmpty()) {
+                        ReadinessCard(issues = issues)
                     } else {
-                        stringResource(
-                            if (state.isCreateAgain) {
-                                R.string.ads_create_again_hero_body
+                        Button(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            enabled = !state.isBusy,
+                            onClick = onSubmit,
+                            colors = ButtonDefaults.buttonColors(containerColor = TurquoiseAccent),
+                            shape = RoundedCornerShape(16.dp),
+                        ) {
+                            if (state.isSubmitting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                    color = Color.White,
+                                )
                             } else {
-                                R.string.ads_create_hero_body
-                            },
-                        )
-                    },
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.White.copy(alpha = 0.92f),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun CreateLoadingCard(
-    message: String,
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
-    ) {
-        Row(
-            modifier = Modifier.padding(MaterialTheme.spacing.xLarge),
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(22.dp),
-                strokeWidth = 2.dp,
-            )
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        }
-    }
-}
-
-@Composable
-private fun CreateInlineMessageCard(
-    message: String?,
-    onDismiss: () -> Unit,
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = MaterialTheme.spacing.large, vertical = MaterialTheme.spacing.medium),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                modifier = Modifier.weight(1f),
-                text = message.orEmpty(),
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-            )
-            TextButton(onClick = onDismiss) {
-                Text(text = stringResource(R.string.ads_inline_error_dismiss))
-            }
-        }
-    }
-}
-
-@Composable
-private fun CreateSectionCard(
-    title: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector? = null,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(30.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f),
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-    ) {
-        Column(
-            modifier = Modifier.padding(MaterialTheme.spacing.xLarge),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
-            content = {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    icon?.let {
-                        Icon(
-                            imageVector = it,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
+                                Text(
+                                    text = stringResource(R.string.ads_create_flow_submit),
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontWeight = FontWeight.SemiBold,
+                                    ),
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                // No scenario selected
+                item {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = SectionCardShape,
+                        color = CardWhite.copy(alpha = 0.55f),
+                        border = BorderStroke(1.dp, TurquoiseBorder.copy(alpha = 0.15f)),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.ads_create_flow_no_scenario),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(24.dp),
                         )
                     }
+                }
+            }
+        }
+    }
+}
+
+// ── Sticky Mini Summary ──────────────────────────────────────────────
+
+@Composable
+private fun StickyMiniSummary(
+    draft: AnnouncementCreateFormDraft,
+    isExpanded: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onToggle),
+        shape = RoundedCornerShape(16.dp),
+        color = CardWhite.copy(alpha = 0.92f),
+        border = BorderStroke(1.dp, TurquoiseBorder.copy(alpha = 0.25f)),
+        shadowElevation = 2.dp,
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .animateContentSize(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessMedium,
+                    ),
+                ),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    modifier = Modifier.weight(1f),
+                    text = draft.generatedTitle(),
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = if (isExpanded) 2 else 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Icon(
+                    imageVector = if (isExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                    contentDescription = null,
+                    tint = TurquoiseAccent,
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                MiniChip(text = draft.actionSummaryText())
+                MiniChip(text = draft.objectSummaryText())
+            }
+            AnimatedVisibility(
+                visible = isExpanded,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    MiniSummaryRow(
+                        label = stringResource(R.string.ads_create_flow_mini_route),
+                        value = draft.routeSummaryText(),
+                    )
+                    MiniSummaryRow(
+                        label = stringResource(R.string.ads_create_flow_mini_when),
+                        value = draft.whenSummaryText(),
+                    )
+                    MiniSummaryRow(
+                        label = stringResource(R.string.ads_create_flow_mini_price),
+                        value = draft.priceSummaryText(),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MiniChip(text: String) {
+    Surface(shape = RoundedCornerShape(10.dp), color = TurquoiseLight) {
+        Text(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            color = TurquoiseAccent,
+        )
+    }
+}
+
+@Composable
+private fun MiniSummaryRow(label: String, value: String) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(64.dp),
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+// ── Action Type Grid ─────────────────────────────────────────────────
+
+@Composable
+private fun ActionTypeGrid(
+    selectedAction: AnnouncementStructuredData.ActionType?,
+    onActionSelected: (AnnouncementStructuredData.ActionType) -> Unit,
+) {
+    val actions = listOf(
+        Triple(AnnouncementStructuredData.ActionType.Pickup, R.string.ads_create_flow_action_pickup, R.string.ads_create_flow_action_pickup_sub),
+        Triple(AnnouncementStructuredData.ActionType.Buy, R.string.ads_create_flow_action_buy, R.string.ads_create_flow_action_buy_sub),
+        Triple(AnnouncementStructuredData.ActionType.Carry, R.string.ads_create_flow_action_carry, R.string.ads_create_flow_action_carry_sub),
+        Triple(AnnouncementStructuredData.ActionType.Ride, R.string.ads_create_flow_action_ride, R.string.ads_create_flow_action_ride_sub),
+        Triple(AnnouncementStructuredData.ActionType.ProHelp, R.string.ads_create_flow_action_pro_help, R.string.ads_create_flow_action_pro_help_sub),
+        Triple(AnnouncementStructuredData.ActionType.Other, R.string.ads_create_flow_action_other, R.string.ads_create_flow_action_other_sub),
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        actions.chunked(2).forEach { rowItems ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                rowItems.forEach { (actionType, titleRes, subtitleRes) ->
+                    val isSelected = selectedAction == actionType
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .heightIn(min = 80.dp)
+                            .clickable { onActionSelected(actionType) },
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (isSelected) TurquoiseLight else CardWhite,
+                        border = BorderStroke(
+                            width = if (isSelected) 1.5.dp else 1.dp,
+                            color = if (isSelected) TurquoiseAccent else MaterialTheme.colorScheme.outlineVariant,
+                        ),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(12.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Text(
+                                text = stringResource(titleRes),
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = if (isSelected) TurquoiseAccent else MaterialTheme.colorScheme.onSurface,
+                            )
+                            Text(
+                                text = stringResource(subtitleRes),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+                if (rowItems.size == 1) Spacer(modifier = Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+// ── Final Summary Card ───────────────────────────────────────────────
+
+@Composable
+private fun FinalSummaryCard(draft: AnnouncementCreateFormDraft) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = SectionCardShape,
+        color = CardWhite,
+        border = BorderStroke(1.dp, TurquoiseBorder.copy(alpha = 0.25f)),
+        shadowElevation = 1.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.ads_create_flow_summary_section),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = draft.generatedTitle(),
+                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            // Tags
+            val tags = draft.activeConditionTags()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                MiniChip(text = draft.actionSummaryText())
+                MiniChip(text = draft.objectSummaryText())
+                MiniChip(text = draft.whenSummaryText())
+                tags.take(4).forEach { tag -> MiniChip(text = tag) }
+            }
+            // Summary rows
+            SummaryRow(stringResource(R.string.ads_create_flow_summary_scenario), draft.actionSummaryText())
+            SummaryRow(stringResource(R.string.ads_create_flow_summary_object), draft.objectSummaryText())
+            SummaryRow(stringResource(R.string.ads_create_flow_summary_route), draft.routeSummaryText())
+            SummaryRow(stringResource(R.string.ads_create_flow_summary_when), draft.whenSummaryText())
+            SummaryRow(stringResource(R.string.ads_create_flow_summary_price), draft.priceSummaryText())
+        }
+    }
+}
+
+@Composable
+private fun SummaryRow(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(text = label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(100.dp))
+        Text(text = value, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold), color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+    }
+}
+
+// ── Readiness Card ───────────────────────────────────────────────────
+
+@Composable
+private fun ReadinessCard(issues: List<String>) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = SectionCardShape,
+        color = CardWhite,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.ads_create_flow_readiness_title),
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            issues.take(6).forEach { issue ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
+                    Icon(imageVector = Icons.Outlined.Error, contentDescription = null, tint = TurquoiseAccent, modifier = Modifier.size(18.dp))
+                    Text(text = issue, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+                }
+            }
+        }
+    }
+}
+
+// ── Section Card ─────────────────────────────────────────────────────
+
+@Composable
+private fun FlowSectionCard(
+    title: String,
+    subtitle: String? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = SectionCardShape,
+        color = CardWhite.copy(alpha = 0.55f),
+        border = BorderStroke(1.dp, TurquoiseBorder.copy(alpha = 0.18f)),
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                if (subtitle != null) {
                     Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                content()
-            },
-        )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun <T> CreateSegmentedButtons(
-    values: List<T>,
-    selectedValue: T,
-    label: @Composable (T) -> Unit,
-    onSelected: (T) -> Unit,
-) {
-    SingleChoiceSegmentedButtonRow(
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        values.forEachIndexed { index, value ->
-            SegmentedButton(
-                selected = selectedValue == value,
-                onClick = { onSelected(value) },
-                shape = SegmentedButtonDefaults.itemShape(index = index, count = values.size),
-            ) {
-                label(value)
             }
+            content()
         }
     }
 }
 
+// ── Chip Group ───────────────────────────────────────────────────────
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun <T> SelectionChipGroup(
-    title: String,
+private fun <T> FlowChipGroup(
     values: List<T>,
     selectedValue: T?,
-    label: @Composable (T) -> Unit,
+    label: @Composable (T) -> String,
     onSelected: (T) -> Unit,
+    title: String? = null,
 ) {
     if (values.isEmpty()) return
-
-    Column(
-        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-        ) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (title != null) {
+            Text(text = title, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+        }
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             values.forEach { value ->
+                val isSelected = value == selectedValue
                 FilterChip(
-                    selected = value == selectedValue,
+                    selected = isSelected,
                     onClick = { onSelected(value) },
-                    label = {
-                        label(value)
-                    },
+                    label = { Text(text = label(value), style = MaterialTheme.typography.labelLarge) },
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedContainerColor = TurquoiseLight,
+                        selectedLabelColor = TurquoiseAccent,
+                    ),
+                    border = FilterChipDefaults.filterChipBorder(
+                        borderColor = if (isSelected) TurquoiseAccent else MaterialTheme.colorScheme.outlineVariant,
+                        selectedBorderColor = TurquoiseAccent,
+                        enabled = true,
+                        selected = isSelected,
+                    ),
+                    shape = RoundedCornerShape(12.dp),
                 )
             }
         }
     }
 }
 
+// ── Condition Toggle ─────────────────────────────────────────────────
+
 @Composable
-private fun CreateTextField(
+private fun ConditionToggleRow(title: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable { onCheckedChange(!checked) },
+        color = Color.Transparent,
+        shape = RoundedCornerShape(14.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(modifier = Modifier.weight(1f), text = title, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+            Surface(
+                modifier = Modifier.size(28.dp),
+                shape = CircleShape,
+                color = if (checked) TurquoiseAccent else Color.Transparent,
+                border = BorderStroke(if (checked) 0.dp else 1.5.dp, if (checked) Color.Transparent else MaterialTheme.colorScheme.outlineVariant),
+            ) {
+                if (checked) {
+                    Icon(imageVector = Icons.Outlined.CheckCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(28.dp).padding(2.dp))
+                }
+            }
+        }
+    }
+}
+
+// ── Text Field ───────────────────────────────────────────────────────
+
+@Composable
+private fun FlowTextField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
@@ -914,14 +1098,10 @@ private fun CreateTextField(
         onValueChange = onValueChange,
         textStyle = MaterialTheme.typography.bodyLarge,
         label = { Text(text = label) },
-        placeholder = { Text(text = placeholder) },
+        placeholder = { Text(text = placeholder, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)) },
         leadingIcon = leadingIcon,
         isError = error != null,
-        supportingText = error?.let {
-            {
-                Text(text = it)
-            }
-        },
+        supportingText = error?.let { { Text(text = it) } },
         keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
             capitalization = KeyboardCapitalization.Sentences,
             keyboardType = keyboardType,
@@ -930,104 +1110,58 @@ private fun CreateTextField(
         singleLine = maxLines == 1,
         minLines = minLines,
         maxLines = maxLines,
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(14.dp),
     )
 }
 
+// ── Misc helpers ─────────────────────────────────────────────────────
+
 @Composable
-private fun AttributeToggleRow(
-    title: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
-) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 56.dp)
-            .clip(RoundedCornerShape(22.dp))
-            .clickable { onCheckedChange(!checked) },
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f),
-        shape = RoundedCornerShape(22.dp),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                modifier = Modifier.weight(1f),
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Switch(
-                checked = checked,
-                onCheckedChange = onCheckedChange,
-            )
+private fun CreateLoadingCard(message: String) {
+    Surface(modifier = Modifier.fillMaxWidth(), shape = SectionCardShape, color = CardWhite.copy(alpha = 0.96f)) {
+        Row(modifier = Modifier.padding(20.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp, color = TurquoiseAccent)
+            Text(text = message, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
         }
     }
 }
 
 @Composable
-private fun MediaPreviewCard(
-    media: AnnouncementSelectedMedia,
-    onRemove: () -> Unit,
-) {
-    Box(
-        modifier = Modifier.size(width = 140.dp, height = 112.dp),
-    ) {
-        AsyncImage(
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(24.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
-            model = media.uriString,
-            contentDescription = stringResource(R.string.ads_image_preview_description),
-            contentScale = ContentScale.Crop,
-        )
-        Surface(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(8.dp),
-            shape = CircleShape,
-            color = Color.Black.copy(alpha = 0.48f),
-        ) {
-            IconButton(
-                modifier = Modifier.size(32.dp),
-                onClick = onRemove,
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Close,
-                    contentDescription = stringResource(R.string.ads_action_cancel),
-                    tint = Color.White,
-                )
+private fun CreateInlineMessageCard(message: String?, onDismiss: () -> Unit) {
+    Surface(modifier = Modifier.fillMaxWidth(), shape = SectionCardShape, color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.7f)) {
+        Row(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Text(modifier = Modifier.weight(1f), text = message.orEmpty(), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSecondaryContainer)
+            TextButton(onClick = onDismiss) { Text(text = stringResource(R.string.ads_inline_error_dismiss)) }
+        }
+    }
+}
+
+@Composable
+private fun MediaPreviewCard(media: AnnouncementSelectedMedia, onRemove: () -> Unit) {
+    Box(modifier = Modifier.size(width = 120.dp, height = 96.dp)) {
+        AsyncImage(modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)), model = media.uriString, contentDescription = stringResource(R.string.ads_image_preview_description), contentScale = ContentScale.Crop)
+        Surface(modifier = Modifier.align(Alignment.TopEnd).padding(6.dp), shape = CircleShape, color = Color.Black.copy(alpha = 0.48f)) {
+            IconButton(modifier = Modifier.size(28.dp), onClick = onRemove) {
+                Icon(imageVector = Icons.Outlined.Close, contentDescription = stringResource(R.string.ads_action_cancel), tint = Color.White, modifier = Modifier.size(16.dp))
             }
         }
     }
 }
 
-private fun taskBriefPlaceholderRes(
-    actionType: AnnouncementStructuredData.ActionType?,
-): Int = when (actionType) {
+private fun taskBriefPlaceholderRes(actionType: AnnouncementStructuredData.ActionType?): Int = when (actionType) {
     AnnouncementStructuredData.ActionType.ProHelp -> R.string.ads_create_task_brief_placeholder_help
     AnnouncementStructuredData.ActionType.Other -> R.string.ads_create_task_brief_placeholder_other
     else -> R.string.ads_create_task_brief_placeholder_generic
 }
 
-private fun sourceAddressPlaceholderRes(
-    actionType: AnnouncementStructuredData.ActionType?,
-): Int = when (actionType) {
+private fun sourceAddressPlaceholderRes(actionType: AnnouncementStructuredData.ActionType?): Int = when (actionType) {
     AnnouncementStructuredData.ActionType.Buy -> R.string.ads_create_source_placeholder_buy
     AnnouncementStructuredData.ActionType.Ride -> R.string.ads_create_source_placeholder_ride
     AnnouncementStructuredData.ActionType.ProHelp -> R.string.ads_create_source_placeholder_help
     else -> R.string.ads_create_source_placeholder_generic
 }
 
-private fun destinationAddressPlaceholderRes(
-    actionType: AnnouncementStructuredData.ActionType?,
-): Int = when (actionType) {
+private fun destinationAddressPlaceholderRes(actionType: AnnouncementStructuredData.ActionType?): Int = when (actionType) {
     AnnouncementStructuredData.ActionType.Ride -> R.string.ads_create_destination_placeholder_ride
     AnnouncementStructuredData.ActionType.Carry -> R.string.ads_create_destination_placeholder_carry
     else -> R.string.ads_create_destination_placeholder_generic

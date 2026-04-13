@@ -37,7 +37,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -109,18 +108,10 @@ private fun ProfileHomeScreen(
     onOpenEdit: () -> Unit,
     onOpenReviews: (ReviewRole) -> Unit,
 ) {
-    val backgroundBrush = Brush.verticalGradient(
-        colors = listOf(
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.24f),
-            MaterialTheme.colorScheme.background,
-            MaterialTheme.colorScheme.background,
-        ),
-    )
-
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(backgroundBrush),
+            .background(MaterialTheme.colorScheme.background),
     ) {
         PullToRefreshBox(
             modifier = Modifier.fillMaxSize(),
@@ -159,7 +150,7 @@ private fun ProfileHomeScreen(
                         item {
                             Text(
                                 text = stringResource(R.string.profile_screen_title),
-                                style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                                style = MaterialTheme.typography.headlineLarge,
                                 color = MaterialTheme.colorScheme.onBackground,
                             )
                         }
@@ -347,8 +338,8 @@ private fun ProfileHomeScreen(
                                                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
                                             ) {
                                                 Surface(
-                                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
-                                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.38f),
+                                                    shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                                                    color = MaterialTheme.colorScheme.surfaceContainerHigh,
                                                 ) {
                                                     Column(
                                                         modifier = Modifier.padding(16.dp),
@@ -356,7 +347,7 @@ private fun ProfileHomeScreen(
                                                     ) {
                                                         Text(
                                                             text = stringResource(R.string.profile_reviews_preview_label),
-                                                            style = MaterialTheme.typography.bodyMedium,
+                                                            style = MaterialTheme.typography.bodySmall,
                                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                         )
                                                         Row(
@@ -365,7 +356,7 @@ private fun ProfileHomeScreen(
                                                         ) {
                                                             Text(
                                                                 text = previewState.summary.average.toUiRating(),
-                                                                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                                                                style = MaterialTheme.typography.headlineMedium,
                                                                 color = MaterialTheme.colorScheme.onSurface,
                                                             )
                                                             Text(
@@ -373,7 +364,7 @@ private fun ProfileHomeScreen(
                                                                     R.string.profile_reviews_summary_count,
                                                                     previewState.summary.count,
                                                                 ),
-                                                                style = MaterialTheme.typography.bodyLarge,
+                                                                style = MaterialTheme.typography.bodyMedium,
                                                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                             )
                                                         }
