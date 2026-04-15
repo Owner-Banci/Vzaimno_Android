@@ -7,6 +7,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vzaimno.app.R
+import com.vzaimno.app.core.model.AnnouncementStructuredData
 import com.vzaimno.app.core.network.ApiResult
 import com.vzaimno.app.core.network.UploadFilePayload
 import com.vzaimno.app.data.repository.AnnouncementRepository
@@ -62,21 +63,15 @@ class AnnouncementCreateViewModel @Inject constructor(
         loadPrefillIfNeeded()
     }
 
-    fun onMainGroupSelected(mainGroup: AnnouncementMainGroup) {
+    // ── Action type (main scenario) ─────────────────────────────────────
+
+    fun onActionTypeSelected(actionType: AnnouncementStructuredData.ActionType) {
         updateDraft { draft ->
-            draft.withMainGroup(mainGroup)
+            CreateAdActionDefaults.applyActionChange(draft, actionType)
         }
     }
 
-    fun onActionTypeSelected(actionType: com.vzaimno.app.core.model.AnnouncementStructuredData.ActionType) {
-        updateDraft { draft ->
-            draft.withActionType(actionType)
-        }
-    }
-
-    fun onTitleChanged(value: String) {
-        updateDraft { draft -> draft.copy(title = value) }
-    }
+    // ── Object section ──────────────────────────────────────────────────
 
     fun onItemTypeSelected(itemType: AnnouncementCreateItemType?) {
         updateDraft { draft -> draft.copy(itemType = itemType) }
@@ -90,70 +85,118 @@ class AnnouncementCreateViewModel @Inject constructor(
         updateDraft { draft -> draft.copy(helpType = helpType) }
     }
 
-    fun onSourceKindSelected(kind: com.vzaimno.app.core.model.AnnouncementStructuredData.SourceKind?) {
+    fun onTaskBriefChanged(value: String) {
+        updateDraft { draft -> draft.copy(taskBrief = value) }
+    }
+
+    // ── Source / destination ─────────────────────────────────────────────
+
+    fun onSourceKindSelected(kind: AnnouncementStructuredData.SourceKind?) {
         updateDraft { draft -> draft.copy(sourceKind = kind) }
     }
 
-    fun onDestinationKindSelected(kind: com.vzaimno.app.core.model.AnnouncementStructuredData.DestinationKind?) {
+    fun onDestinationKindSelected(kind: AnnouncementStructuredData.DestinationKind?) {
         updateDraft { draft -> draft.copy(destinationKind = kind) }
-    }
-
-    fun onUrgencySelected(urgency: com.vzaimno.app.core.model.AnnouncementStructuredData.Urgency) {
-        updateDraft { draft -> draft.copy(urgency = urgency) }
     }
 
     fun onSourceAddressChanged(value: String) {
         updateDraft { draft ->
-            draft.copy(
-                source = draft.source.copy(
-                    address = value,
-                    placeId = null,
-                    point = null,
-                ),
-            )
+            draft.copy(source = draft.source.copy(address = value))
         }
     }
 
     fun onDestinationAddressChanged(value: String) {
         updateDraft { draft ->
-            draft.copy(
-                destination = draft.destination.copy(
-                    address = value,
-                    placeId = null,
-                    point = null,
-                ),
+            draft.copy(destination = draft.destination.copy(address = value))
+        }
+    }
+
+    // ── Time section ────────────────────────────────────────────────────
+
+    fun onUrgencySelected(urgency: AnnouncementStructuredData.Urgency) {
+        updateDraft { draft -> draft.copy(urgency = urgency) }
+    }
+
+    fun onStartDateChanged(value: String) {
+        updateDraft { draft -> draft.copy(startDate = value) }
+    }
+
+    fun onHasEndTimeChanged(value: Boolean) {
+        updateDraft { draft -> draft.copy(hasEndTime = value) }
+    }
+
+    fun onEndDateChanged(value: String) {
+        updateDraft { draft -> draft.copy(endDate = value) }
+    }
+
+    fun onEstimatedTaskMinutesChanged(value: String) {
+        updateDraft { draft ->
+            draft.copy(attributes = draft.attributes.copy(estimatedTaskMinutes = value))
+        }
+    }
+
+    fun onWaitingMinutesChanged(value: String) {
+        updateDraft { draft ->
+            draft.copy(attributes = draft.attributes.copy(waitingMinutes = value))
+        }
+    }
+
+    // ── Conditions section ──────────────────────────────────────────────
+
+    fun onConditionChanged(condition: AnnouncementConditionOption, enabled: Boolean) {
+        updateDraft { draft ->
+            val updated = draft.copy(
+                attributes = draft.attributes.withCondition(condition, enabled),
             )
+            CreateAdActionDefaults.normalizeForAction(updated)
         }
     }
 
-    fun onBudgetModeSelected(mode: AnnouncementBudgetMode) {
+    fun onFloorChanged(value: String) {
         updateDraft { draft ->
-            val updatedBudget = when (mode) {
-                AnnouncementBudgetMode.Fixed -> draft.budget.copy(
-                    mode = mode,
-                    amount = draft.budget.amount.ifBlank {
-                        draft.budget.max.ifBlank { draft.budget.min }
-                    },
-                    min = "",
-                    max = "",
-                )
-
-                AnnouncementBudgetMode.Range -> draft.budget.copy(
-                    mode = mode,
-                    amount = "",
-                    min = draft.budget.min.ifBlank { draft.budget.amount },
-                    max = draft.budget.max.ifBlank { draft.budget.amount },
-                )
-            }
-            draft.copy(budget = updatedBudget)
+            draft.copy(attributes = draft.attributes.copy(floor = value))
         }
     }
 
-    fun onBudgetAmountChanged(value: String) {
+    // ── Cargo section ───────────────────────────────────────────────────
+
+    fun onWeightCategorySelected(category: AnnouncementStructuredData.WeightCategory?) {
         updateDraft { draft ->
-            draft.copy(budget = draft.budget.copy(amount = value))
+            draft.copy(attributes = draft.attributes.copy(weightCategory = category))
         }
     }
+
+    fun onSizeCategorySelected(category: AnnouncementStructuredData.SizeCategory?) {
+        updateDraft { draft ->
+            draft.copy(attributes = draft.attributes.copy(sizeCategory = category))
+        }
+    }
+
+    fun onCargoLengthChanged(value: String) {
+        updateDraft { draft ->
+            draft.copy(attributes = draft.attributes.copy(cargoLength = value))
+        }
+    }
+
+    fun onCargoWidthChanged(value: String) {
+        updateDraft { draft ->
+            draft.copy(attributes = draft.attributes.copy(cargoWidth = value))
+        }
+    }
+
+    fun onCargoHeightChanged(value: String) {
+        updateDraft { draft ->
+            draft.copy(attributes = draft.attributes.copy(cargoHeight = value))
+        }
+    }
+
+    fun toggleExactDimensions() {
+        _uiState.update { state ->
+            state.copy(showsExactDimensions = !state.showsExactDimensions)
+        }
+    }
+
+    // ── Budget section ──────────────────────────────────────────────────
 
     fun onBudgetMinChanged(value: String) {
         updateDraft { draft ->
@@ -167,13 +210,7 @@ class AnnouncementCreateViewModel @Inject constructor(
         }
     }
 
-    fun onTaskBriefChanged(value: String) {
-        updateDraft { draft -> draft.copy(taskBrief = value) }
-    }
-
-    fun onNotesChanged(value: String) {
-        updateDraft { draft -> draft.copy(notes = value) }
-    }
+    // ── Contact section ─────────────────────────────────────────────────
 
     fun onContactNameChanged(value: String) {
         updateDraft { draft ->
@@ -199,60 +236,18 @@ class AnnouncementCreateViewModel @Inject constructor(
         }
     }
 
-    fun onEstimatedTaskMinutesChanged(value: String) {
+    // ── Description / notes ─────────────────────────────────────────────
+
+    fun onNotesChanged(value: String) {
         updateDraft { draft ->
-            draft.copy(
-                attributes = draft.attributes.copy(estimatedTaskMinutes = value),
-            )
+            draft.copy(notes = value, userEditedNotes = true)
         }
     }
 
-    fun onWaitingMinutesChanged(value: String) {
-        updateDraft { draft ->
-            draft.copy(
-                attributes = draft.attributes.copy(waitingMinutes = value),
-            )
-        }
-    }
-
-    fun onFloorChanged(value: String) {
-        updateDraft { draft ->
-            draft.copy(
-                attributes = draft.attributes.copy(floor = value),
-            )
-        }
-    }
-
-    fun onWeightCategorySelected(category: com.vzaimno.app.core.model.AnnouncementStructuredData.WeightCategory?) {
-        updateDraft { draft ->
-            draft.copy(
-                attributes = draft.attributes.copy(weightCategory = category),
-            )
-        }
-    }
-
-    fun onSizeCategorySelected(category: com.vzaimno.app.core.model.AnnouncementStructuredData.SizeCategory?) {
-        updateDraft { draft ->
-            draft.copy(
-                attributes = draft.attributes.copy(sizeCategory = category),
-            )
-        }
-    }
-
-    fun onAttributeToggleChanged(
-        toggle: AnnouncementAttributeToggle,
-        enabled: Boolean,
-    ) {
-        updateDraft { draft ->
-            draft.copy(
-                attributes = draft.attributes.withToggle(toggle, enabled),
-            ).normalizedForCurrentAction()
-        }
-    }
+    // ── Media ───────────────────────────────────────────────────────────
 
     fun onMediaPicked(uris: List<Uri>) {
         if (uris.isEmpty()) return
-
         updateDraft { draft ->
             val newMedia = uris
                 .map { uri ->
@@ -263,23 +258,26 @@ class AnnouncementCreateViewModel @Inject constructor(
                         mimeType = context.contentResolver.getType(uri),
                     )
                 }
-                .filterNot { selected ->
-                    draft.media.any { it.id == selected.id }
-                }
-
+                .filterNot { selected -> draft.media.any { it.id == selected.id } }
+            val combinedMedia = (draft.media + newMedia).take(MAX_MEDIA_ITEMS)
             draft.copy(
-                media = (draft.media + newMedia).take(MAX_MEDIA_ITEMS),
+                media = combinedMedia,
+                mediaLocalIdentifiers = combinedMedia.map(AnnouncementSelectedMedia::id),
             )
         }
     }
 
     fun removeMedia(mediaId: String) {
         updateDraft { draft ->
+            val remaining = draft.media.filterNot { it.id == mediaId }
             draft.copy(
-                media = draft.media.filterNot { it.id == mediaId },
+                media = remaining,
+                mediaLocalIdentifiers = remaining.map(AnnouncementSelectedMedia::id),
             )
         }
     }
+
+    // ── Summary ─────────────────────────────────────────────────────────
 
     fun toggleSummaryExpanded() {
         _uiState.update { state ->
@@ -287,23 +285,24 @@ class AnnouncementCreateViewModel @Inject constructor(
         }
     }
 
+    // ── Messages ────────────────────────────────────────────────────────
+
     fun clearInlineMessage() {
-        _uiState.update { state ->
-            state.copy(inlineMessage = null)
-        }
+        _uiState.update { state -> state.copy(inlineMessage = null) }
     }
+
+    // ── Submit ──────────────────────────────────────────────────────────
 
     fun submit() {
         if (_uiState.value.isBusy) return
 
         val draft = _uiState.value.draft
-        val validation = draft.validate(context)
-        if (validation.hasErrors) {
+
+        // Check readiness
+        val issues = draft.submitReadinessIssues
+        if (issues.isNotEmpty()) {
             _uiState.update { state ->
-                state.copy(
-                    fieldErrors = validation,
-                    inlineMessage = validation.firstMessage(),
-                )
+                state.copy(inlineMessage = issues.first())
             }
             return
         }
@@ -318,15 +317,13 @@ class AnnouncementCreateViewModel @Inject constructor(
 
         adsAnnouncementCoordinator.upsertOptimistic(optimisticAnnouncement)
         _uiState.update { state ->
-            state.copy(
-                isSubmitting = true,
-                fieldErrors = AnnouncementCreateFieldErrors(),
-                inlineMessage = null,
-            )
+            state.copy(isSubmitting = true, inlineMessage = null)
         }
 
         viewModelScope.launch {
-            when (val createResult = announcementRepository.createAnnouncement(draft.toRepositoryDraft(submissionPlan.requestStatus))) {
+            when (val createResult = announcementRepository.createAnnouncement(
+                draft.toRepositoryDraft(submissionPlan.requestStatus),
+            )) {
                 is ApiResult.Success -> {
                     var createdAnnouncement = createResult.value
                     adsAnnouncementCoordinator.replaceOptimistic(localId, createdAnnouncement)
@@ -351,7 +348,6 @@ class AnnouncementCreateViewModel @Inject constructor(
                                     )
                                     postSubmitMessage = successMessageFor(createdAnnouncement.adsBucket())
                                 }
-
                                 is ApiResult.Failure -> {
                                     postSubmitMessage = context.getString(
                                         R.string.ads_create_warning_media_with_reason,
@@ -362,9 +358,7 @@ class AnnouncementCreateViewModel @Inject constructor(
                         }
                     }
 
-                    _uiState.update { state ->
-                        state.copy(isSubmitting = false)
-                    }
+                    _uiState.update { state -> state.copy(isSubmitting = false) }
                     _events.emit(
                         AnnouncementCreateEvent.Submitted(
                             focusFilter = createdAnnouncement.adsBucket(),
@@ -386,24 +380,23 @@ class AnnouncementCreateViewModel @Inject constructor(
         }
     }
 
+    // ── Prefill ─────────────────────────────────────────────────────────
+
     private fun loadPrefillIfNeeded() {
         if (prefillAnnouncementId.isNullOrBlank() || hasLoadedPrefill) return
         hasLoadedPrefill = true
 
         viewModelScope.launch {
             _uiState.update { state ->
-                state.copy(
-                    isPrefillLoading = true,
-                    inlineMessage = null,
-                )
+                state.copy(isPrefillLoading = true, inlineMessage = null)
             }
 
             when (val result = announcementRepository.fetchAnnouncement(prefillAnnouncementId)) {
                 is ApiResult.Success -> {
+                    val prefilledDraft = result.value.toCreateFormDraftWithModerationMarks()
                     _uiState.update { state ->
                         state.copy(
-                            draft = result.value.toCreateFormDraft(),
-                            fieldErrors = AnnouncementCreateFieldErrors(),
+                            draft = prefilledDraft,
                             isPrefillLoading = false,
                             inlineMessage = if (result.value.hasReusablePrefillMedia()) {
                                 context.getString(R.string.ads_create_prefill_media_hint)
@@ -411,6 +404,7 @@ class AnnouncementCreateViewModel @Inject constructor(
                                 null
                             },
                             prefillSourceTitle = result.value.title,
+                            showsExactDimensions = prefilledDraft.hasExactDimensions,
                         )
                     }
                 }
@@ -427,50 +421,52 @@ class AnnouncementCreateViewModel @Inject constructor(
         }
     }
 
+    // ── Internal helpers ────────────────────────────────────────────────
+
     private fun updateDraft(
         transform: (AnnouncementCreateFormDraft) -> AnnouncementCreateFormDraft,
     ) {
         _uiState.update { state ->
+            val newDraft = transform(state.draft)
+            // Auto-sync description if user hasn't manually edited notes
+            val syncedDraft = if (!newDraft.userEditedNotes) {
+                newDraft.copy(notes = newDraft.assembledDescription)
+            } else {
+                newDraft
+            }
             state.copy(
-                draft = transform(state.draft),
-                fieldErrors = AnnouncementCreateFieldErrors(),
+                draft = syncedDraft,
                 inlineMessage = null,
+                showsExactDimensions = state.showsExactDimensions || syncedDraft.hasExactDimensions,
             )
         }
     }
 
-    private fun buildUploadPayloads(media: List<AnnouncementSelectedMedia>): List<UploadFilePayload> = buildList {
-        media.forEachIndexed { index, selectedMedia ->
-            val uri = Uri.parse(selectedMedia.uriString)
-            val bytes = runCatching {
-                context.contentResolver.openInputStream(uri)?.use { stream ->
-                    stream.readBytes()
-                }
-            }.getOrNull() ?: return@forEachIndexed
+    private fun buildUploadPayloads(media: List<AnnouncementSelectedMedia>): List<UploadFilePayload> =
+        buildList {
+            media.forEachIndexed { index, selectedMedia ->
+                val uri = Uri.parse(selectedMedia.uriString)
+                val bytes = runCatching {
+                    context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                }.getOrNull() ?: return@forEachIndexed
 
-            add(
-                UploadFilePayload(
-                    bytes = bytes,
-                    fileName = selectedMedia.fileName ?: "announcement-media-${index + 1}.jpg",
-                    mimeType = selectedMedia.mimeType ?: "image/jpeg",
-                ),
-            )
+                add(
+                    UploadFilePayload(
+                        bytes = bytes,
+                        fileName = selectedMedia.fileName ?: "announcement-media-${index + 1}.jpg",
+                        mimeType = selectedMedia.mimeType ?: "image/jpeg",
+                    ),
+                )
+            }
         }
-    }
 
     private fun queryDisplayName(uri: Uri): String? = runCatching {
         context.contentResolver.query(
-            uri,
-            arrayOf(OpenableColumns.DISPLAY_NAME),
-            null,
-            null,
-            null,
+            uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null,
         )?.use { cursor ->
             if (cursor.moveToFirst()) {
                 cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME))
-            } else {
-                null
-            }
+            } else null
         }
     }.getOrNull()
 
@@ -481,6 +477,6 @@ class AnnouncementCreateViewModel @Inject constructor(
     }
 
     private companion object {
-        const val MAX_MEDIA_ITEMS = 8
+        const val MAX_MEDIA_ITEMS = 3
     }
 }

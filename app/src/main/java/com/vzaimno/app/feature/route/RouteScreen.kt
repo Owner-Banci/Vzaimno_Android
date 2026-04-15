@@ -1,7 +1,14 @@
 package com.vzaimno.app.feature.route
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,10 +30,14 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.outlined.AddRoad
 import androidx.compose.material.icons.outlined.AltRoute
 import androidx.compose.material.icons.outlined.CheckCircleOutline
@@ -36,6 +47,7 @@ import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.RemoveRoad
 import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -117,6 +129,9 @@ fun RouteHomeRoute(
         onAcceptPreviewTask = viewModel::acceptPreviewTask,
         onRemoveAcceptedTask = viewModel::removeAcceptedTask,
         onOpenAnnouncementDetails = onOpenAnnouncementDetails,
+        onMapZoomIn = viewModel::zoomMapIn,
+        onMapZoomOut = viewModel::zoomMapOut,
+        onMapCenterOnUser = viewModel::focusMapOnUserStub,
         onOpenExternalMaps = { navigation ->
             if (!openRouteInMaps(context, navigation)) {
                 scope.launch {
@@ -141,6 +156,9 @@ private fun RouteScreen(
     onAcceptPreviewTask: (String) -> Unit,
     onRemoveAcceptedTask: (String) -> Unit,
     onOpenAnnouncementDetails: (String) -> Unit,
+    onMapZoomIn: () -> Unit,
+    onMapZoomOut: () -> Unit,
+    onMapCenterOnUser: () -> Unit,
     onOpenExternalMaps: (RouteExternalNavigationUi) -> Unit,
 ) {
     val activeRole = state.roleSelection.selectedRole
@@ -182,15 +200,6 @@ private fun RouteScreen(
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
             ) {
                 item {
-                    RouteHeader(
-                        summary = when (activeRole) {
-                            RouteRole.Performer -> performerState.summary
-                            RouteRole.Customer -> customerState.summary
-                        },
-                    )
-                }
-
-                item {
                     RouteRoleSwitcher(
                         state = state.roleSelection,
                         onSwitchRole = onSwitchRole,
@@ -211,6 +220,9 @@ private fun RouteScreen(
                         state = state.map,
                         onMarkerSelected = onSelectTask,
                         onRetry = onRetry,
+                        onZoomIn = onMapZoomIn,
+                        onZoomOut = onMapZoomOut,
+                        onCenterOnUser = onMapCenterOnUser,
                         onOpenExternalMaps = onOpenExternalMaps,
                     )
                 }
@@ -507,6 +519,9 @@ private fun RouteMapCard(
     state: RouteMapUiState,
     onMarkerSelected: (String) -> Unit,
     onRetry: () -> Unit,
+    onZoomIn: () -> Unit,
+    onZoomOut: () -> Unit,
+    onCenterOnUser: () -> Unit,
     onOpenExternalMaps: (RouteExternalNavigationUi) -> Unit,
 ) {
     Surface(
@@ -518,7 +533,7 @@ private fun RouteMapCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(260.dp),
+                .height(312.dp),
         ) {
             if (state.isConfigured) {
                 RouteYandexMap(
@@ -546,16 +561,39 @@ private fun RouteMapCard(
                 }
             }
 
-            if (state.note != null) {
+            Column(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = MaterialTheme.spacing.large),
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+            ) {
+                RouteMapFloatingButton(
+                    icon = Icons.Filled.Add,
+                    contentDescription = "Увеличить карту",
+                    onClick = onZoomIn,
+                )
+                RouteMapFloatingButton(
+                    icon = Icons.Filled.Remove,
+                    contentDescription = "Уменьшить карту",
+                    onClick = onZoomOut,
+                )
+                RouteMapFloatingButton(
+                    icon = Icons.Filled.MyLocation,
+                    contentDescription = "Показать текущее положение",
+                    onClick = onCenterOnUser,
+                )
+            }
+
+            state.note?.let { note ->
                 Surface(
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .padding(MaterialTheme.spacing.large),
-                    shape = RoundedCornerShape(18.dp),
-                    color = Color.Black.copy(alpha = 0.66f),
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color.Black.copy(alpha = 0.68f),
                 ) {
                     Text(
-                        text = state.note,
+                        text = note,
                         modifier = Modifier.padding(
                             horizontal = MaterialTheme.spacing.medium,
                             vertical = MaterialTheme.spacing.small,
@@ -583,6 +621,33 @@ private fun RouteMapCard(
                     modifier = Modifier.align(Alignment.Center),
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun RouteMapFloatingButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.size(42.dp),
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+        shadowElevation = 4.dp,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clickable(onClick = onClick),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = MaterialTheme.colorScheme.onSurface,
+            )
         }
     }
 }
@@ -852,17 +917,29 @@ private fun RouteTaskCard(
     onAcceptToRoute: (() -> Unit)?,
     onRemoveFromRoute: (() -> Unit)?,
 ) {
+    val accentColor = when (task.kind) {
+        RouteTaskKind.Primary -> Color(0xFF2BB7A7)
+        RouteTaskKind.AcceptedExtra -> Color(0xFF2BB673)
+        RouteTaskKind.Preview -> Color(0xFFF08A63)
+        RouteTaskKind.CustomerObserved -> Color(0xFF2BB7A7)
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onSelect),
-        shape = RoundedCornerShape(28.dp),
+            .clickable(onClick = onSelect)
+            .animateContentSize(),
+        shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (task.isSelected) {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.62f)
+                accentColor.copy(alpha = 0.08f)
             } else {
                 MaterialTheme.colorScheme.surface
             },
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = if (task.isSelected) accentColor.copy(alpha = 0.32f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = if (task.isSelected) 3.dp else 1.dp),
     ) {
@@ -874,9 +951,17 @@ private fun RouteTaskCard(
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
                 verticalAlignment = Alignment.Top,
             ) {
+                Box(
+                    modifier = Modifier
+                        .padding(top = 6.dp)
+                        .size(12.dp)
+                        .clip(CircleShape)
+                        .background(accentColor),
+                )
+
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
@@ -886,8 +971,8 @@ private fun RouteTaskCard(
                             label = task.kindLabel,
                             tone = when (task.kind) {
                                 RouteTaskKind.Primary -> RouteChipTone.Accent
-                                RouteTaskKind.AcceptedExtra -> RouteChipTone.Warning
-                                RouteTaskKind.Preview -> RouteChipTone.Neutral
+                                RouteTaskKind.AcceptedExtra -> RouteChipTone.Positive
+                                RouteTaskKind.Preview -> RouteChipTone.Warning
                                 RouteTaskKind.CustomerObserved -> RouteChipTone.Accent
                             },
                         )
@@ -898,113 +983,183 @@ private fun RouteTaskCard(
                             )
                         }
                     }
+
                     Text(
                         text = task.title,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurface,
                     )
+
                     Text(
                         text = task.subtitle,
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        task.priceText?.let { price ->
+                            Text(
+                                text = price,
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = accentColor,
+                            )
+                        }
+                        task.detourText?.let { detour ->
+                            Text(
+                                text = detour,
+                                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                 }
+
                 if (task.isSelected) {
                     Icon(
                         imageVector = Icons.Outlined.CheckCircleOutline,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint = accentColor,
                     )
-                }
-            }
-
-            Text(
-                text = task.body,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-
-            if (task.addressText != null || task.priceText != null || task.detourText != null || task.previewSummary != null) {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    task.addressText?.let { value ->
-                        RouteDetailLine(label = "Адрес", value = value)
-                    }
-                    task.priceText?.let { value ->
-                        RouteDetailLine(label = "Оплата", value = value)
-                    }
-                    task.detourText?.let { value ->
-                        RouteDetailLine(label = "Отклонение", value = value)
-                    }
-                    task.previewSummary?.let { value ->
-                        RouteDetailLine(label = "Подсказка", value = value)
-                    }
                 }
             }
 
             if (task.stageChips.isNotEmpty()) {
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
                 ) {
                     task.stageChips.forEach { chip ->
-                        RouteStageChip(chip = chip)
+                        RouteStageChip(
+                            chip = chip,
+                            isActionable = task.canAdvanceStage &&
+                                onAdvanceStage != null &&
+                                chip.stage == task.nextStage,
+                            onClick = {
+                                if (task.canAdvanceStage && chip.stage == task.nextStage) {
+                                    onAdvanceStage?.invoke()
+                                }
+                            },
+                        )
                     }
+                }
+            } else if (!task.previewSummary.isNullOrBlank()) {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.52f),
+                ) {
+                    Text(
+                        text = task.previewSummary,
+                        modifier = Modifier.padding(
+                            horizontal = MaterialTheme.spacing.medium,
+                            vertical = MaterialTheme.spacing.medium,
+                        ),
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+            AnimatedVisibility(
+                visible = task.isSelected,
+                enter = fadeIn() + slideInVertically(initialOffsetY = { it / 8 }),
+                exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 8 }),
             ) {
-                OutlinedButton(
-                    modifier = Modifier.weight(1f),
-                    onClick = onOpenDetails,
-                    enabled = task.canOpenDetails,
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
                 ) {
-                    Text(text = "Детали")
-                }
-                when {
-                    task.canAdvanceStage && onAdvanceStage != null && task.nextStageLabel != null -> {
-                        FilledTonalButton(
-                            modifier = Modifier.weight(1f),
-                            onClick = onAdvanceStage,
-                            enabled = !isBusy,
+                    Text(
+                        text = task.body,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+
+                    if (task.addressText != null || task.priceText != null || task.detourText != null || task.previewSummary != null) {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
-                            Text(text = task.nextStageLabel)
+                            task.addressText?.let { value ->
+                                RouteDetailLine(label = "Адрес", value = value)
+                            }
+                            task.priceText?.let { value ->
+                                RouteDetailLine(label = "Оплата", value = value)
+                            }
+                            task.detourText?.let { value ->
+                                RouteDetailLine(label = "Отклонение", value = value)
+                            }
+                            task.previewSummary?.let { value ->
+                                RouteDetailLine(label = "Подсказка", value = value)
+                            }
                         }
                     }
 
-                    task.canAcceptToRoute && onAcceptToRoute != null -> {
-                        FilledTonalButton(
-                            modifier = Modifier.weight(1f),
-                            onClick = onAcceptToRoute,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.AddRoad,
-                                contentDescription = null,
-                            )
-                            Text(
-                                text = "В маршрут",
-                                modifier = Modifier.padding(start = 6.dp),
-                            )
-                        }
-                    }
-
-                    task.canRemoveFromRoute && onRemoveFromRoute != null -> {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                    ) {
                         OutlinedButton(
                             modifier = Modifier.weight(1f),
-                            onClick = onRemoveFromRoute,
+                            onClick = onOpenDetails,
+                            enabled = task.canOpenDetails,
                         ) {
-                            Icon(
-                                imageVector = Icons.Outlined.RemoveRoad,
-                                contentDescription = null,
-                            )
-                            Text(
-                                text = "Убрать",
-                                modifier = Modifier.padding(start = 6.dp),
-                            )
+                            Text(text = "Открыть карточку")
+                        }
+                        when {
+                            task.canAdvanceStage && onAdvanceStage != null && task.nextStageLabel != null -> {
+                                FilledTonalButton(
+                                    modifier = Modifier.weight(1f),
+                                    onClick = onAdvanceStage,
+                                    enabled = !isBusy,
+                                    colors = ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = accentColor.copy(alpha = 0.18f),
+                                    ),
+                                ) {
+                                    Text(
+                                        text = task.nextStageLabel,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    )
+                                }
+                            }
+
+                            task.canAcceptToRoute && onAcceptToRoute != null -> {
+                                FilledTonalButton(
+                                    modifier = Modifier.weight(1f),
+                                    onClick = onAcceptToRoute,
+                                    colors = ButtonDefaults.filledTonalButtonColors(
+                                        containerColor = Color(0xFF2BB7A7),
+                                        contentColor = Color.White,
+                                    ),
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.AddRoad,
+                                        contentDescription = null,
+                                    )
+                                    Text(
+                                        text = "В маршрут",
+                                        modifier = Modifier.padding(start = 6.dp),
+                                    )
+                                }
+                            }
+
+                            task.canRemoveFromRoute && onRemoveFromRoute != null -> {
+                                OutlinedButton(
+                                    modifier = Modifier.weight(1f),
+                                    onClick = onRemoveFromRoute,
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.RemoveRoad,
+                                        contentDescription = null,
+                                    )
+                                    Text(
+                                        text = "Убрать",
+                                        modifier = Modifier.padding(start = 6.dp),
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -1050,35 +1205,85 @@ private fun RouteChip(
 }
 
 @Composable
-private fun RowScope.RouteStageChip(
+private fun RouteStageChip(
     chip: RouteStageChipUi,
+    isActionable: Boolean,
+    onClick: () -> Unit,
 ) {
     val background = when (chip.state) {
         RouteStageProgressState.Done -> Color(0xFFE0F3E7)
-        RouteStageProgressState.Current -> MaterialTheme.colorScheme.primaryContainer
-        RouteStageProgressState.Pending -> MaterialTheme.colorScheme.surfaceVariant
+        RouteStageProgressState.Current -> Color(0xFF2BB7A7).copy(alpha = 0.16f)
+        RouteStageProgressState.Pending -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
     }
     val foreground = when (chip.state) {
         RouteStageProgressState.Done -> Color(0xFF126A38)
-        RouteStageProgressState.Current -> MaterialTheme.colorScheme.onPrimaryContainer
-        RouteStageProgressState.Pending -> MaterialTheme.colorScheme.onSurfaceVariant
+        RouteStageProgressState.Current -> Color(0xFF14665E)
+        RouteStageProgressState.Pending -> if (isActionable) Color(0xFF2BB7A7) else MaterialTheme.colorScheme.onSurfaceVariant
     }
 
     Surface(
-        modifier = Modifier.weight(1f),
-        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .clickable(enabled = isActionable, onClick = onClick),
+        shape = RoundedCornerShape(999.dp),
         color = background,
+        border = if (isActionable) {
+            androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF2BB7A7).copy(alpha = 0.24f))
+        } else {
+            null
+        },
     ) {
-        Text(
-            text = chip.label,
+        Row(
             modifier = Modifier.padding(
-                horizontal = MaterialTheme.spacing.small,
-                vertical = 8.dp,
+                horizontal = MaterialTheme.spacing.medium,
+                vertical = 10.dp,
             ),
-            style = MaterialTheme.typography.labelMedium,
-            color = foreground,
-            textAlign = TextAlign.Center,
-        )
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .clip(CircleShape)
+                    .background(
+                        when (chip.state) {
+                            RouteStageProgressState.Done,
+                            RouteStageProgressState.Current,
+                            -> Color(0xFF2BB7A7)
+
+                            RouteStageProgressState.Pending -> if (isActionable) {
+                                Color(0xFF2BB7A7).copy(alpha = 0.18f)
+                            } else {
+                                MaterialTheme.colorScheme.surface
+                            }
+                        },
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = when (chip.state) {
+                        RouteStageProgressState.Done -> "✓"
+                        RouteStageProgressState.Current -> "•"
+                        RouteStageProgressState.Pending -> (chip.stage.ordinal + 1).toString()
+                    },
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = when (chip.state) {
+                        RouteStageProgressState.Done,
+                        RouteStageProgressState.Current,
+                        -> Color.White
+
+                        RouteStageProgressState.Pending -> if (isActionable) Color(0xFF2BB7A7) else MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                )
+            }
+
+            Text(
+                text = chip.label,
+                style = MaterialTheme.typography.labelMedium,
+                color = foreground,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
 

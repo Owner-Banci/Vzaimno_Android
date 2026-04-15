@@ -291,6 +291,47 @@ class RouteViewModel @Inject constructor(
         }
     }
 
+    fun zoomMapIn() {
+        mapCommandToken += 1
+        currentMapCommand = RouteMapCommand.ZoomIn(token = mapCommandToken)
+        reduceUiState()
+    }
+
+    fun zoomMapOut() {
+        mapCommandToken += 1
+        currentMapCommand = RouteMapCommand.ZoomOut(token = mapCommandToken)
+        reduceUiState()
+    }
+
+    fun focusMapOnUserStub() {
+        val point = when (selectedRole) {
+            RouteRole.Performer -> performerContext?.start
+                ?: performerActiveTasks().firstOrNull { it.isSelected }?.coordinate
+                ?: performerActiveTasks().firstOrNull()?.coordinate
+                ?: performerPreviewTasks().firstOrNull { it.isSelected }?.coordinate
+                ?: performerPreviewTasks().firstOrNull()?.coordinate
+
+            RouteRole.Customer -> {
+                val selectedId = selectedCustomerTaskId
+                customerRouteContexts[selectedId]?.start
+                    ?: customerTasks().firstOrNull { it.isSelected }?.coordinate
+                    ?: customerTasks().firstOrNull()?.coordinate
+            }
+        }
+
+        if (point != null) {
+            mapCommandToken += 1
+            currentMapCommand = RouteMapCommand.FocusPoint(
+                token = mapCommandToken,
+                point = point,
+                zoom = 14.4f,
+            )
+        } else {
+            issueFitMap()
+        }
+        reduceUiState()
+    }
+
     private fun load(showLoadingState: Boolean) {
         if (loadJob?.isActive == true) return
 

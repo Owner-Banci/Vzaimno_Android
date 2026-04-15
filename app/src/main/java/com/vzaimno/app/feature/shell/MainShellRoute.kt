@@ -45,8 +45,8 @@ import com.vzaimno.app.feature.ads.AnnouncementDetailsRoute
 import com.vzaimno.app.feature.ads.MyAnnouncementsRoute
 import com.vzaimno.app.feature.ads.AdsFilterBucket
 import com.vzaimno.app.feature.ads.create.AnnouncementCreateRoute
-import com.vzaimno.app.feature.chats.ChatThreadRoute
 import com.vzaimno.app.feature.chats.ChatConversationKind
+import com.vzaimno.app.feature.chats.ChatThreadRoute
 import com.vzaimno.app.feature.chats.ChatsDestination
 import com.vzaimno.app.feature.chats.ChatsRoute
 import com.vzaimno.app.feature.shell.components.ShellBanner
@@ -133,7 +133,11 @@ fun MainShellRoute(
                         startDestination = ShellTabDestination.Map.rootRoute,
                     ) {
                         composable(route = ShellTabDestination.Map.rootRoute) {
-                            MapShellScreen()
+                            MapShellScreen(
+                                onOpenCreate = {
+                                    navController.navigate(AdsDestination.createRoute())
+                                },
+                            )
                         }
                     }
 
@@ -231,22 +235,24 @@ fun MainShellRoute(
                         composable(route = ChatsDestination.homeRoute) {
                             ChatsRoute(
                                 onOpenThread = { threadId, threadKind ->
-                                    val route = if (threadKind == "support") {
-                                        ChatsDestination.supportRoute
-                                    } else {
+                                    navController.navigate(
                                         ChatsDestination.threadRoute(
                                             threadId = threadId,
                                             threadKind = threadKind,
-                                        )
-                                    }
-                                    navController.navigate(route)
+                                        ),
+                                    )
                                 },
                                 onOpenSupport = {
                                     navController.navigate(ChatsDestination.supportRoute)
                                 },
                             )
                         }
-
+                        composable(route = ChatsDestination.supportRoute) {
+                            ChatThreadRoute(
+                                onBack = navController::navigateUp,
+                                isSupportEntry = true,
+                            )
+                        }
                         composable(
                             route = ChatsDestination.threadRoutePattern,
                             arguments = ChatsDestination.threadArguments,
@@ -254,13 +260,6 @@ fun MainShellRoute(
                             ChatThreadRoute(
                                 onBack = navController::navigateUp,
                                 isSupportEntry = false,
-                            )
-                        }
-
-                        composable(route = ChatsDestination.supportRoute) {
-                            ChatThreadRoute(
-                                onBack = navController::navigateUp,
-                                isSupportEntry = true,
                             )
                         }
                     }
@@ -341,7 +340,7 @@ private fun ShellBottomBar(
 ) {
     Surface(
         tonalElevation = 0.dp,
-        shadowElevation = 8.dp,
+        shadowElevation = 12.dp,
         color = MaterialTheme.colorScheme.surface,
     ) {
         NavigationBar(
@@ -370,11 +369,11 @@ private fun ShellBottomBar(
                     },
                     alwaysShowLabel = true,
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = MaterialTheme.colorScheme.primary,
-                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                        selectedIconColor = MaterialTheme.colorScheme.tertiary,
+                        selectedTextColor = MaterialTheme.colorScheme.tertiary,
                         unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
                         unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        indicatorColor = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.12f),
                     ),
                 )
             }

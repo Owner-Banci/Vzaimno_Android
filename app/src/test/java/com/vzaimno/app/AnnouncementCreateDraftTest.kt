@@ -1,6 +1,6 @@
 package com.vzaimno.app
 
-import com.vzaimno.app.core.common.asJsonObjectOrNull
+import com.vzaimno.app.core.common.asJsonArrayOrNull
 import com.vzaimno.app.core.common.boolOrNullCompat
 import com.vzaimno.app.core.common.intOrNullCompat
 import com.vzaimno.app.core.common.jsonAt
@@ -9,22 +9,19 @@ import com.vzaimno.app.core.model.AnnouncementStructuredData
 import com.vzaimno.app.data.mappers.toDomain
 import com.vzaimno.app.data.remote.dto.AnnouncementDto
 import com.vzaimno.app.feature.ads.create.AnnouncementAddressInput
-import com.vzaimno.app.feature.ads.create.AnnouncementAudience
 import com.vzaimno.app.feature.ads.create.AnnouncementBudgetInput
-import com.vzaimno.app.feature.ads.create.AnnouncementBudgetMode
+import com.vzaimno.app.feature.ads.create.AnnouncementConditionOption
 import com.vzaimno.app.feature.ads.create.AnnouncementContactMethod
-import com.vzaimno.app.feature.ads.create.AnnouncementContactsInput
 import com.vzaimno.app.feature.ads.create.AnnouncementCreateFormDraft
 import com.vzaimno.app.feature.ads.create.AnnouncementCreateItemType
+import com.vzaimno.app.feature.ads.create.AnnouncementCreatePurchaseType
 import com.vzaimno.app.feature.ads.create.AnnouncementMainGroup
-import com.vzaimno.app.feature.ads.create.AnnouncementSelectedMedia
-import com.vzaimno.app.feature.ads.create.hasReusablePrefillMedia
-import com.vzaimno.app.feature.ads.create.submissionPlan
-import com.vzaimno.app.feature.ads.create.toCreateFormDraft
-import com.vzaimno.app.feature.ads.create.toOptimisticAnnouncement
+import com.vzaimno.app.feature.ads.create.CreateAdActionDefaults
+import com.vzaimno.app.feature.ads.create.toCreateFormDraftWithModerationMarks
 import com.vzaimno.app.feature.ads.create.toRepositoryDraft
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -38,68 +35,204 @@ class AnnouncementCreateDraftTest {
     }
 
     @Test
-    fun `repository draft builds task schema v2 payload with structured contacts and budget`() {
-        val draft = AnnouncementCreateFormDraft(
-            mainGroup = AnnouncementMainGroup.Delivery,
-            actionType = AnnouncementStructuredData.ActionType.Pickup,
-            title = "Забрать документы и привезти домой",
-            itemType = AnnouncementCreateItemType.Documents,
-            sourceKind = AnnouncementStructuredData.SourceKind.PickupPoint,
-            destinationKind = AnnouncementStructuredData.DestinationKind.Address,
-            urgency = AnnouncementStructuredData.Urgency.Today,
-            source = AnnouncementAddressInput(address = "Москва, Лесная, 7"),
-            destination = AnnouncementAddressInput(address = "Москва, Ямская, 11"),
-            budget = AnnouncementBudgetInput(
-                mode = AnnouncementBudgetMode.Range,
-                min = "700",
-                max = "1100",
-            ),
-            contacts = AnnouncementContactsInput(
-                name = "Анна",
-                phone = "+7 999 123-45-67",
-                method = AnnouncementContactMethod.MessagesOnly,
-                audience = AnnouncementAudience.Both,
-            ),
-            media = listOf(
-                AnnouncementSelectedMedia(
-                    id = "media-1",
-                    uriString = "content://photos/1",
-                    fileName = "photo.jpg",
-                    mimeType = "image/jpeg",
-                ),
-            ),
+    fun `pickup action applies defaults`() {
+        val draft = CreateAdActionDefaults.applyActionChange(
+            draft = AnnouncementCreateFormDraft(),
+            newAction = AnnouncementStructuredData.ActionType.Pickup,
         )
 
-        val repositoryDraft = draft.toRepositoryDraft(requestStatus = "pending_review")
-        assertEquals("delivery", repositoryDraft.category)
-        assertEquals("pending_review", repositoryDraft.status)
-        assertEquals(2, repositoryDraft.data.jsonAt(listOf("task", "schema_version"))?.intOrNullCompat())
-        assertEquals("pickup", repositoryDraft.data.jsonAt(listOf("task", "builder", "action_type"))?.stringOrNullCompat())
-        assertEquals("pickup_point", repositoryDraft.data.jsonAt(listOf("task", "builder", "resolved_category"))?.stringOrNullCompat())
-        assertEquals(700, repositoryDraft.data.jsonAt(listOf("task", "budget", "min"))?.intOrNullCompat())
-        assertEquals(1100, repositoryDraft.data.jsonAt(listOf("task", "budget", "max"))?.intOrNullCompat())
-        assertEquals(1100, repositoryDraft.data.jsonAt(listOf("task", "budget", "amount"))?.intOrNullCompat())
-        assertEquals("Анна", repositoryDraft.data.jsonAt(listOf("task", "contacts", "name"))?.stringOrNullCompat())
-        assertEquals("+79991234567", repositoryDraft.data.jsonAt(listOf("task", "contacts", "phone"))?.stringOrNullCompat())
-        assertEquals("messages_only", repositoryDraft.data.jsonAt(listOf("task", "contacts", "method"))?.stringOrNullCompat())
-        assertEquals("Москва, Лесная, 7", repositoryDraft.data.jsonAt(listOf("task", "route", "source", "address"))?.stringOrNullCompat())
-        assertEquals("Москва, Ямская, 11", repositoryDraft.data.jsonAt(listOf("task", "route", "destination", "address"))?.stringOrNullCompat())
+        assertEquals(AnnouncementStructuredData.ActionType.Pickup, draft.actionType)
+        assertEquals(AnnouncementStructuredData.SourceKind.PickupPoint, draft.sourceKind)
+        assertEquals(AnnouncementStructuredData.DestinationKind.Address, draft.destinationKind)
+        assertEquals(AnnouncementCreateItemType.Documents, draft.itemType)
+        assertEquals("30", draft.attributes.estimatedTaskMinutes)
+        assertEquals(AnnouncementMainGroup.Delivery, draft.mainGroup)
     }
 
     @Test
-    fun `prefill draft reads nested task payload and marks existing media as non-reusable`() {
-        val announcement = json.decodeFromString(AnnouncementDto.serializer(), """
+    fun `switching from carry to ride resets incompatible cargo fields and forces vehicle`() {
+        val carryDraft = AnnouncementCreateFormDraft(
+            actionType = AnnouncementStructuredData.ActionType.Carry,
+            itemType = AnnouncementCreateItemType.BulkyItem,
+            sourceKind = AnnouncementStructuredData.SourceKind.Address,
+            destinationKind = AnnouncementStructuredData.DestinationKind.Entrance,
+            attributes = com.vzaimno.app.feature.ads.create.AnnouncementAttributesInput(
+                needsTrunk = true,
+                requiresCarefulHandling = true,
+                needsLoader = true,
+                requiresLiftToFloor = true,
+                cargoLength = "120",
+                cargoWidth = "60",
+                cargoHeight = "40",
+                weightCategory = AnnouncementStructuredData.WeightCategory.Over15Kg,
+                sizeCategory = AnnouncementStructuredData.SizeCategory.Bulky,
+            ),
+        )
+
+        val draft = CreateAdActionDefaults.applyActionChange(
+            draft = carryDraft,
+            newAction = AnnouncementStructuredData.ActionType.Ride,
+        )
+
+        assertEquals(AnnouncementStructuredData.ActionType.Ride, draft.actionType)
+        assertEquals(AnnouncementStructuredData.SourceKind.Address, draft.sourceKind)
+        assertEquals(AnnouncementStructuredData.DestinationKind.Address, draft.destinationKind)
+        assertTrue(draft.attributes.requiresVehicle)
+        assertFalse(draft.attributes.requiresCarefulHandling)
+        assertFalse(draft.attributes.needsLoader)
+        assertFalse(draft.attributes.requiresLiftToFloor)
+        assertEquals("", draft.attributes.cargoLength)
+        assertEquals("", draft.attributes.cargoWidth)
+        assertEquals("", draft.attributes.cargoHeight)
+        assertEquals(null, draft.attributes.weightCategory)
+        assertEquals(null, draft.attributes.sizeCategory)
+    }
+
+    @Test
+    fun `available conditions and route selectors depend on scenario`() {
+        val pickupDraft = CreateAdActionDefaults.applyActionChange(
+            AnnouncementCreateFormDraft(),
+            AnnouncementStructuredData.ActionType.Pickup,
+        )
+        assertTrue(pickupDraft.availableConditionOptions.contains(AnnouncementConditionOption.RequiresVehicle))
+        assertFalse(pickupDraft.availableConditionOptions.contains(AnnouncementConditionOption.HasElevator))
+        assertTrue(pickupDraft.availableSourceKinds.contains(AnnouncementStructuredData.SourceKind.PickupPoint))
+        assertTrue(pickupDraft.availableDestinationKinds.contains(AnnouncementStructuredData.DestinationKind.Person))
+
+        val liftedDraft = pickupDraft.copy(
+            attributes = pickupDraft.attributes.copy(requiresLiftToFloor = true),
+        )
+        assertTrue(liftedDraft.availableConditionOptions.contains(AnnouncementConditionOption.HasElevator))
+
+        val proHelpDraft = CreateAdActionDefaults.applyActionChange(
+            AnnouncementCreateFormDraft(),
+            AnnouncementStructuredData.ActionType.ProHelp,
+        )
+        assertFalse(proHelpDraft.showsDestinationSection)
+        assertEquals(listOf(AnnouncementConditionOption.CallBeforeArrival, AnnouncementConditionOption.PhotoReportRequired), proHelpDraft.availableConditionOptions)
+    }
+
+    @Test
+    fun `generated title description route and budget summary mirror iOS logic`() {
+        val draft = CreateAdActionDefaults.applyActionChange(
+            AnnouncementCreateFormDraft(),
+            AnnouncementStructuredData.ActionType.Pickup,
+        ).copy(
+            itemType = AnnouncementCreateItemType.Documents,
+            urgency = AnnouncementStructuredData.Urgency.Today,
+            sourceKind = AnnouncementStructuredData.SourceKind.PickupPoint,
+            destinationKind = AnnouncementStructuredData.DestinationKind.Address,
+            source = AnnouncementAddressInput(address = "Пятницкая 12"),
+            destination = AnnouncementAddressInput(address = "Москва, Лесная 10"),
+        )
+
+        assertEquals("Забрать документы", draft.generatedTitle)
+        assertEquals("Пятницкая 12 -> Москва, Лесная 10", draft.routeSummary)
+        assertEquals("Сегодня", draft.timeSummary)
+        assertEquals("Рекомендуем 450–650 ₽", draft.budgetSummary)
+        assertTrue(draft.assembledDescription.contains("Нужно забрать документы."))
+        assertTrue(draft.assembledDescription.contains("Забор: из ПВЗ Пятницкая 12."))
+        assertTrue(draft.assembledDescription.contains("Куда доставить: Москва, Лесная 10."))
+    }
+
+    @Test
+    fun `recommended price follows exact formula for default pickup documents`() {
+        val draft = CreateAdActionDefaults.applyActionChange(
+            AnnouncementCreateFormDraft(),
+            AnnouncementStructuredData.ActionType.Pickup,
+        ).copy(
+            itemType = AnnouncementCreateItemType.Documents,
+            urgency = AnnouncementStructuredData.Urgency.Today,
+            sourceKind = AnnouncementStructuredData.SourceKind.PickupPoint,
+            destinationKind = AnnouncementStructuredData.DestinationKind.Address,
+        )
+
+        val price = draft.recommendedPriceRange
+
+        assertEquals(450, price.min)
+        assertEquals(650, price.max)
+        assertEquals("450–650 ₽", price.text)
+    }
+
+    @Test
+    fun `readiness issues explain missing required fields`() {
+        val draft = CreateAdActionDefaults.applyActionChange(
+            AnnouncementCreateFormDraft(),
+            AnnouncementStructuredData.ActionType.ProHelp,
+        ).copy(
+            helpType = null,
+            taskBrief = "",
+            source = AnnouncementAddressInput(address = ""),
+        )
+
+        val issues = draft.submitReadinessIssues
+
+        assertTrue(issues.contains("Выберите вид помощи"))
+        assertTrue(issues.any { it.contains("Что") || it.contains("Опишите") })
+        assertTrue(issues.any { it.contains("Где нужна помощь") })
+    }
+
+    @Test
+    fun `payload builder keeps legacy flat keys and nested task payload in sync`() {
+        val draft = CreateAdActionDefaults.applyActionChange(
+            AnnouncementCreateFormDraft(),
+            AnnouncementStructuredData.ActionType.Buy,
+        ).copy(
+            purchaseType = AnnouncementCreatePurchaseType.Medicine,
+            sourceKind = AnnouncementStructuredData.SourceKind.Venue,
+            destinationKind = AnnouncementStructuredData.DestinationKind.Address,
+            source = AnnouncementAddressInput(address = "Москва, Маросейка 8"),
+            destination = AnnouncementAddressInput(address = "Москва, Проспект Мира 20"),
+            budget = AnnouncementBudgetInput(min = "900", max = "1200"),
+            startDate = "2026-04-14T09:00:00Z",
+            hasEndTime = true,
+            endDate = "2026-04-14T11:00:00Z",
+        )
+
+        val payload = draft.toRepositoryDraft(requestStatus = "pending_review")
+
+        assertEquals("delivery", payload.category)
+        assertEquals("pending_review", payload.status)
+        assertEquals("buy", payload.data["action_type"]?.stringOrNullCompat())
+        assertEquals(900, payload.data["budget_min"]?.intOrNullCompat())
+        assertEquals(1200, payload.data["budget_max"]?.intOrNullCompat())
+        assertEquals("2026-04-14T09:00:00Z", payload.data["start_at"]?.stringOrNullCompat())
+        assertEquals("2026-04-14T11:00:00Z", payload.data["end_at"]?.stringOrNullCompat())
+        assertEquals(2, payload.data.jsonAt(listOf("task", "schema_version"))?.intOrNullCompat())
+        assertEquals("buy", payload.data.jsonAt(listOf("task", "builder", "action_type"))?.stringOrNullCompat())
+        assertEquals("Москва, Маросейка 8", payload.data.jsonAt(listOf("task", "route", "source", "address"))?.stringOrNullCompat())
+        assertEquals(true, payload.data.jsonAt(listOf("task", "route", "has_end_time"))?.boolOrNullCompat())
+        assertNotNull(payload.data["generated_tags"]?.asJsonArrayOrNull())
+        assertNotNull(payload.data["ai_hints"]?.asJsonArrayOrNull())
+    }
+
+    @Test
+    fun `prefill restores nested task payload and moderation marks`() {
+        val announcement = json.decodeFromString(
+            AnnouncementDto.serializer(),
+            """
             {
               "id": "ann-prefill-1",
               "user_id": "user-1",
               "category": "delivery",
               "title": "Купить лекарства и привезти",
-              "status": "pending_review",
+              "status": "needs_fix",
               "created_at": "2026-04-09T09:00:00Z",
               "media": [
                 { "url": "https://cdn.example.com/image.jpg" }
               ],
               "data": {
+                "moderation": {
+                  "decision": {
+                    "status": "needs_fix",
+                    "message": "Исправьте спорные поля"
+                  },
+                  "reasons": [
+                    { "field": "title", "code": "TEXT_GENERIC", "details": "Слишком общий заголовок", "can_appeal": true },
+                    { "field": "pickup_address", "code": "ADDR_GENERIC", "details": "Нужно точнее указать адрес", "can_appeal": true },
+                    { "field": "media", "code": "MEDIA_GENERIC", "details": "Фото спорное", "can_appeal": false }
+                  ]
+                },
                 "task": {
                   "schema_version": 2,
                   "builder": {
@@ -109,7 +242,7 @@ class AnnouncementCreateDraftTest {
                     "purchase_type": "medicine",
                     "source_kind": "venue",
                     "destination_kind": "address",
-                    "urgency": "today",
+                    "urgency": "scheduled",
                     "task_brief": "Забрать рецепт и купить лекарства",
                     "notes": "Важно позвонить перед выездом"
                   },
@@ -125,6 +258,9 @@ class AnnouncementCreateDraftTest {
                     "amount": 1200
                   },
                   "route": {
+                    "start_at": "2026-04-14T09:00:00Z",
+                    "has_end_time": true,
+                    "end_at": "2026-04-14T11:00:00Z",
                     "source": {
                       "address": "Москва, Маросейка, 8"
                     },
@@ -141,65 +277,23 @@ class AnnouncementCreateDraftTest {
                 }
               }
             }
-        """.trimIndent()).toDomain()
+            """.trimIndent(),
+        ).toDomain()
 
-        val draft = announcement.toCreateFormDraft()
+        val draft = announcement.toCreateFormDraftWithModerationMarks()
 
-        assertEquals(AnnouncementMainGroup.Delivery, draft.mainGroup)
         assertEquals(AnnouncementStructuredData.ActionType.Buy, draft.actionType)
-        assertEquals("Купить лекарства и привезти", draft.title)
+        assertEquals(AnnouncementCreatePurchaseType.Medicine, draft.purchaseType)
         assertEquals("Москва, Маросейка, 8", draft.source.address)
         assertEquals("Москва, Проспект Мира, 20", draft.destination.address)
-        assertEquals(AnnouncementBudgetMode.Range, draft.budget.mode)
         assertEquals("900", draft.budget.min)
         assertEquals("1200", draft.budget.max)
-        assertEquals("Мария", draft.contacts.name)
-        assertEquals("+79991234567", draft.contacts.phone)
+        assertEquals("2026-04-14T09:00:00Z", draft.startDate)
+        assertTrue(draft.hasEndTime)
+        assertEquals("2026-04-14T11:00:00Z", draft.endDate)
         assertEquals(AnnouncementContactMethod.CallsOnly, draft.contacts.method)
-        assertEquals(AnnouncementAudience.Individuals, draft.contacts.audience)
-        assertTrue(announcement.hasReusablePrefillMedia())
-    }
-
-    @Test
-    fun `optimistic announcement keeps temporary id and local previews`() {
-        val draft = AnnouncementCreateFormDraft(
-            mainGroup = AnnouncementMainGroup.Help,
-            actionType = AnnouncementStructuredData.ActionType.Other,
-            title = "Нестандартное поручение",
-            source = AnnouncementAddressInput(address = "Москва, Петровка, 5"),
-            budget = AnnouncementBudgetInput(
-                mode = AnnouncementBudgetMode.Fixed,
-                amount = "1500",
-            ),
-            taskBrief = "Нужно быстро передать комплект ключей",
-            media = listOf(
-                AnnouncementSelectedMedia(
-                    id = "media-1",
-                    uriString = "content://photos/77",
-                    fileName = "keys.jpg",
-                    mimeType = "image/jpeg",
-                ),
-            ),
-        )
-
-        val optimistic = draft.toOptimisticAnnouncement(
-            localId = "local-123",
-            userId = "user-77",
-            requestStatus = draft.submissionPlan().requestStatus,
-        )
-
-        assertEquals("local-123", optimistic.id)
-        assertEquals("user-77", optimistic.userId)
-        assertEquals("pending_review", optimistic.status)
-        assertNotNull(optimistic.media.firstOrNull())
-        assertEquals(
-            "content://photos/77",
-            optimistic.media.firstOrNull()?.asJsonObjectOrNull()?.get("url")?.stringOrNullCompat(),
-        )
-        assertEquals(2, optimistic.data.jsonAt(listOf("task", "schema_version"))?.intOrNullCompat())
-        assertTrue(optimistic.data.jsonAt(listOf("task", "budget", "amount"))?.intOrNullCompat() == 1500)
-        assertTrue(optimistic.data.jsonAt(listOf("task", "execution", "status"))?.stringOrNullCompat() == "open")
-        assertTrue(optimistic.data.jsonAt(listOf("task", "route", "source", "address"))?.stringOrNullCompat() == "Москва, Петровка, 5")
-        assertTrue(optimistic.data.jsonAt(listOf("task", "offer_policy", "quick_offer_enabled"))?.boolOrNullCompat() == true)
+        assertEquals("Слишком общий заголовок", draft.moderationMarks["title"]?.details)
+        assertEquals("Нужно точнее указать адрес", draft.moderationMarks["pickup_address"]?.details)
+        assertEquals(com.vzaimno.app.feature.ads.create.ModerationSeverity.Error, draft.moderationMarks["media"]?.severity)
     }
 }

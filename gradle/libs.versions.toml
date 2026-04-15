@@ -20,7 +20,7 @@ serialization = "1.7.3"
 coroutines = "1.9.0"
 coil = "2.7.0"
 securityCrypto = "1.0.0"
-yandexMapkit = "4.8.1-lite"
+yandexMapkit = "4.26.1-full"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }

@@ -36,7 +36,7 @@ class AndroidConnectivityMonitor @Inject constructor(
         }
 
         override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
-            _isOnline.value = networkCapabilities.isUsable()
+            _isOnline.value = currentNetworkState()
         }
     }
 

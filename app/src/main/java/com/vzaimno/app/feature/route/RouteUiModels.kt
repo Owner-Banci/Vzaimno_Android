@@ -191,6 +191,14 @@ sealed interface RouteMapCommand {
         val point: GeoPoint,
         val zoom: Float = 14f,
     ) : RouteMapCommand
+
+    data class ZoomIn(
+        override val token: Long,
+    ) : RouteMapCommand
+
+    data class ZoomOut(
+        override val token: Long,
+    ) : RouteMapCommand
 }
 
 @Immutable
