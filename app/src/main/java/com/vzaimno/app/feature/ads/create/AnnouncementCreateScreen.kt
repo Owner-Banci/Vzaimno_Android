@@ -43,6 +43,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ReceiptLong
+import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.AddAPhoto
 import androidx.compose.material.icons.outlined.Apartment
 import androidx.compose.material.icons.outlined.AutoAwesome
@@ -60,9 +62,11 @@ import androidx.compose.material.icons.outlined.HourglassBottom
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.LocalShipping
 import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Medication
 import androidx.compose.material.icons.outlined.OpenWith
 import androidx.compose.material.icons.outlined.Password
+import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material.icons.outlined.PhotoLibrary
@@ -79,6 +83,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -222,30 +227,37 @@ private fun AnnouncementCreateScreen(
 
     val draft = state.draft
     val exactDimensionsExpanded = state.showsExactDimensions || draft.hasExactDimensions
+    val palette = rememberCreateAdPalette()
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = MilkBackground,
+        containerColor = palette.screenBackground,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             CenterAlignedTopAppBar(
                 title = {
                     Text(
                         text = "Новое объявление",
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = palette.textPrimary,
                     )
                 },
-                actions = {
+                navigationIcon = {
                     IconButton(onClick = onBack, enabled = !state.isBusy) {
                         Icon(
                             imageVector = Icons.Outlined.Close,
                             contentDescription = "Закрыть",
-                            tint = TurquoiseAccent,
+                            tint = palette.textPrimary,
                         )
                     }
                 },
+                actions = {
+                    Spacer(modifier = Modifier.size(48.dp))
+                },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MilkBackground,
+                    containerColor = palette.topBarBackground,
+                    titleContentColor = palette.textPrimary,
+                    navigationIconContentColor = palette.textPrimary,
                 ),
             )
         },
@@ -257,7 +269,7 @@ private fun AnnouncementCreateScreen(
         ) {
             Box(
                 modifier = Modifier
-                    .background(MilkBackground.copy(alpha = 0.96f))
+                    .background(palette.screenBackground.copy(alpha = 0.98f))
                     .padding(horizontal = ScreenHorizontalPadding, vertical = 6.dp),
             ) {
                 CreateAdStickyMiniSummary(
@@ -269,6 +281,7 @@ private fun AnnouncementCreateScreen(
                     priceSummary = draft.budgetSummary,
                     isExpanded = state.isSummaryExpanded,
                     onToggle = onToggleSummary,
+                    leadingIcon = draft.actionType?.let(::actionIcon) ?: Icons.Outlined.Inventory2,
                 )
             }
 
@@ -307,30 +320,23 @@ private fun AnnouncementCreateScreen(
                     item {
                         CreateInfoBanner(
                             title = "Подгружаем данные объявления",
-                            text = "Сейчас перенесём сценарий, адреса, бюджет и пометки модерации.",
+                    text = "Сейчас перенесём сценарий, адреса, бюджет и пометки модерации.",
                         )
                     }
                 }
 
                 item {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = "Соберите объявление\nиз готовых блоков",
-                            style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                            color = TextPrimary,
-                        )
-                        Text(
-                            text = "Сначала выберите сценарий, потом уточните детали. Категория, заголовок и итоговый payload соберутся автоматически.",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = TextSecondary,
-                        )
-                    }
+                    Text(
+                        text = "Сначала выберите сценарий — остальные поля подстроятся.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = palette.textSecondary,
+                    )
                 }
 
                 item {
                     CreateAdSectionCard(
                         title = "Что нужно сделать",
-                        subtitle = "Это главный выбор. Он определяет набор полей, итоговый заголовок и backend group.",
+                        subtitle = "Главный выбор. Определяет набор полей, итоговый заголовок и backend group.",
                     ) {
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -359,7 +365,7 @@ private fun AnnouncementCreateScreen(
                             Text(
                                 text = "Минимум ручного текста: в основном чипы, переключатели, адреса и несколько коротких числовых значений.",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = TextSecondary,
+                                color = palette.textSecondary,
                             )
                         }
                     }
@@ -405,6 +411,8 @@ private fun AnnouncementCreateScreen(
                                     onValueChange = onSourceAddressChanged,
                                     placeholder = draft.sourceAddressPlaceholder,
                                     moderationMark = draft.moderationMarks[draft.sourceAddressModerationKey],
+                                    leadingIcon = Icons.Outlined.LocationOn,
+                                    trailingIcon = Icons.Outlined.Map,
                                 )
                                 ModerationHelp(draft.moderationMarks[draft.sourceAddressModerationKey])
                             }
@@ -429,6 +437,8 @@ private fun AnnouncementCreateScreen(
                                         onValueChange = onDestinationAddressChanged,
                                         placeholder = draft.destinationAddressPlaceholder,
                                         moderationMark = draft.moderationMarks[draft.destinationAddressModerationKey],
+                                        leadingIcon = Icons.Outlined.LocationOn,
+                                        trailingIcon = Icons.Outlined.Map,
                                     )
                                     ModerationHelp(draft.moderationMarks[draft.destinationAddressModerationKey])
                                 }
@@ -460,7 +470,7 @@ private fun AnnouncementCreateScreen(
                                     Text(
                                         text = "Если нужен точный слот, переключите на «Ко времени».",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = TextSecondary,
+                                        color = palette.textSecondary,
                                     )
                                 }
 
@@ -559,7 +569,7 @@ private fun AnnouncementCreateScreen(
                                     Text(
                                         text = "Вес",
                                         style = MaterialTheme.typography.labelLarge,
-                                        color = TextSecondary,
+                                        color = palette.textSecondary,
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
                                     CompactChoiceFlow(
@@ -573,7 +583,7 @@ private fun AnnouncementCreateScreen(
                                     Text(
                                         text = "Размер",
                                         style = MaterialTheme.typography.labelLarge,
-                                        color = TextSecondary,
+                                        color = palette.textSecondary,
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
                                     CompactChoiceFlow(
@@ -592,15 +602,15 @@ private fun AnnouncementCreateScreen(
                                             .clickable(onClick = onToggleExactDimensions)
                                             .animateContentSize(),
                                         shape = RoundedCornerShape(InnerCardRadius),
-                                        color = CardBackground.copy(alpha = 0.72f),
-                                        border = BorderStroke(1.dp, TurquoiseAccent.copy(alpha = 0.14f)),
+                                        color = palette.sectionSurfaceAlt,
+                                        border = BorderStroke(1.dp, palette.border),
                                     ) {
                                         Column(modifier = Modifier.padding(16.dp)) {
                                             Row(verticalAlignment = Alignment.CenterVertically) {
                                                 Text(
                                                     text = "Указать точные габариты",
                                                     style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                                                    color = TextPrimary,
+                                                    color = palette.textPrimary,
                                                     modifier = Modifier.weight(1f),
                                                 )
                                                 Icon(
@@ -610,7 +620,7 @@ private fun AnnouncementCreateScreen(
                                                         Icons.Outlined.DragHandle
                                                     },
                                                     contentDescription = null,
-                                                    tint = TurquoiseAccent,
+                                                    tint = palette.accent,
                                                 )
                                             }
 
@@ -670,8 +680,8 @@ private fun AnnouncementCreateScreen(
                             }
 
                             CreateAdSectionCard(
-                                title = "Контакты",
-                                subtitle = "Исполнитель увидит ваши контакты и предпочтительный способ связи.",
+                                title = "Связь",
+                                subtitle = "Настройте, как и с кем удобно общаться по объявлению.",
                             ) {
                                 CreateAdTextField(
                                     label = "Имя",
@@ -690,7 +700,7 @@ private fun AnnouncementCreateScreen(
                                 Text(
                                     text = "Способ связи",
                                     style = MaterialTheme.typography.labelLarge,
-                                    color = TextSecondary,
+                                    color = palette.textSecondary,
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 CompactChoiceFlow(
@@ -704,7 +714,7 @@ private fun AnnouncementCreateScreen(
                                 Text(
                                     text = "Для кого",
                                     style = MaterialTheme.typography.labelLarge,
-                                    color = TextSecondary,
+                                    color = palette.textSecondary,
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 CompactChoiceFlow(
@@ -724,19 +734,19 @@ private fun AnnouncementCreateScreen(
                                 Text(
                                     text = "Title",
                                     style = MaterialTheme.typography.labelMedium,
-                                    color = TextSecondary,
+                                    color = palette.textSecondary,
                                 )
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
                                     text = draft.generatedTitle,
                                     style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                                    color = TextPrimary,
+                                    color = palette.textPrimary,
                                 )
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
                                     text = "Собирается из двух главных смысловых параметров.",
                                     style = MaterialTheme.typography.bodySmall,
-                                    color = TextSecondary,
+                                    color = palette.textSecondary,
                                 )
                                 ModerationHelp(draft.moderationMarks["title"])
 
@@ -753,7 +763,16 @@ private fun AnnouncementCreateScreen(
                                 Button(
                                     onClick = onPickMedia,
                                     enabled = !state.isBusy && draft.media.size < 3,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(56.dp),
                                     shape = RoundedCornerShape(ButtonRadius),
+                                    colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                        containerColor = palette.ctaContainer,
+                                        contentColor = palette.ctaContent,
+                                        disabledContainerColor = palette.ctaContainer.copy(alpha = 0.45f),
+                                        disabledContentColor = palette.ctaContent.copy(alpha = 0.7f),
+                                    ),
                                 ) {
                                     Icon(
                                         imageVector = Icons.Outlined.AddAPhoto,
@@ -785,49 +804,55 @@ private fun AnnouncementCreateScreen(
                                     Text(
                                         text = "Фото проверяются на сервере. Если спорно — объявление уйдёт в черновики.",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = TextSecondary,
+                                        color = palette.textSecondary,
                                     )
                                 }
                             }
 
-                            CreateAdSectionCard(
-                                title = "Итог объявления",
-                                subtitle = "Сначала проверьте итоговую карточку. Кнопка отправки появляется только здесь, в самом конце формы.",
-                            ) {
-                                FinalSummaryCard(draft = draft)
-
-                                if (draft.selectedConditionTitles.isNotEmpty()) {
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                    FlowRow(
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                                    ) {
-                                        draft.selectedConditionTitles.forEach { title ->
-                                            CreateAdInfoTag(text = title)
-                                        }
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(14.dp))
-                                AnimatedVisibility(
-                                    visible = draft.isReadyForSubmit,
-                                    enter = fadeIn() + expandVertically(),
-                                    exit = fadeOut() + shrinkVertically(),
-                                ) {
-                                    CreateAdBottomButton(
-                                        text = "Отправить на проверку",
-                                        onClick = onSubmit,
-                                        enabled = !state.isBusy,
-                                        isLoading = state.isSubmitting,
-                                    )
-                                }
-
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                                 AnimatedVisibility(
                                     visible = !draft.isReadyForSubmit,
                                     enter = fadeIn() + expandVertically(),
                                     exit = fadeOut() + shrinkVertically(),
                                 ) {
                                     CreateAdReadinessCard(issues = draft.submitReadinessIssues)
+                                }
+
+                                Text(
+                                    text = "Предпросмотр",
+                                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                                    color = palette.textPrimary,
+                                )
+                                Text(
+                                    text = "Так объявление увидят другие пользователи.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = palette.textSecondary,
+                                )
+                                FinalSummaryCard(draft = draft)
+
+                                AnimatedVisibility(
+                                    visible = draft.isReadyForSubmit,
+                                    enter = fadeIn() + expandVertically(),
+                                    exit = fadeOut() + shrinkVertically(),
+                                ) {
+                                    Column {
+                                        CreateAdBottomButton(
+                                            text = "Отправить на проверку",
+                                            onClick = onSubmit,
+                                            enabled = !state.isBusy,
+                                            isLoading = state.isSubmitting,
+                                            leadingIcon = Icons.AutoMirrored.Outlined.Send,
+                                        )
+                                        Text(
+                                            text = "Объявление пройдёт проверку за 1–2 минуты.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = palette.textSecondary,
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(top = 10.dp),
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -847,6 +872,8 @@ private fun ObjectSectionContent(
     onTaskBriefChanged: (String) -> Unit,
     onConditionChanged: (AnnouncementConditionOption, Boolean) -> Unit,
 ) {
+    val palette = rememberCreateAdPalette()
+
     when (draft.actionType) {
         AnnouncementStructuredData.ActionType.Pickup,
         AnnouncementStructuredData.ActionType.Carry,
@@ -872,7 +899,7 @@ private fun ObjectSectionContent(
             Text(
                 text = "Для поездки оставляем короткий сценарий без лишних параметров.",
                 style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary,
+                color = palette.textSecondary,
             )
             Spacer(modifier = Modifier.height(12.dp))
             CompactChoiceFlow(
@@ -941,52 +968,318 @@ private fun <T> CompactChoiceFlow(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun FinalSummaryCard(draft: AnnouncementCreateFormDraft) {
+    val palette = rememberCreateAdPalette()
+    val fromLabel = when (draft.actionType) {
+        AnnouncementStructuredData.ActionType.ProHelp,
+        AnnouncementStructuredData.ActionType.Other,
+        -> "Где"
+
+        else -> "Откуда"
+    }
+    val fromValue = draft.source.address.ifBlank { draft.sourceFieldLabel }
+    val toValue = draft.destination.address.ifBlank { draft.destinationFieldLabel }
+    val durationValue = draft.attributes.estimatedTaskMinutes
+        .takeIf { it.isNotBlank() }
+        ?.let { "~$it мин" }
+        ?: "Не указано"
+    val weightValue = draft.attributes.weightCategory?.title ?: "Не указано"
+    val sizeValue = draft.attributes.sizeCategory?.title ?: "Не указано"
+    val conditionTitles = draft.selectedConditionTitles.take(3)
+
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(InnerCardRadius),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = palette.sectionSurface),
+        border = BorderStroke(1.dp, palette.border),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (palette.isDark) 0.dp else 1.dp),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(
-                            TurquoiseAccent.copy(alpha = 0.16f),
-                            CardBackground.copy(alpha = 0.92f),
+        Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Brush.linearGradient(
+                            colors = listOf(palette.previewHeroStart, palette.previewHeroEnd),
                         ),
-                    ),
+                    )
+                    .padding(horizontal = 18.dp, vertical = 18.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(124.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (palette.isDark) {
+                                Color.White.copy(alpha = 0.06f)
+                            } else {
+                                Color.White.copy(alpha = 0.28f)
+                            },
+                        ),
                 )
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            SummaryLine("Сценарий", draft.actionType?.title ?: "Черновик")
-            SummaryLine("Категория", draft.mainGroup.title)
-            SummaryLine("Кратко", draft.objectSummary)
-            SummaryLine("Маршрут", draft.routeSummary)
-            SummaryLine("Когда", draft.timeSummary)
-            SummaryLine("Цена", draft.budgetSummary)
+                Column {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = palette.previewChip,
+                    ) {
+                        Text(
+                            text = (draft.actionType?.title ?: "Черновик").uppercase(),
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = palette.previewChipContent,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Text(
+                        text = draft.generatedTitle,
+                        style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.SemiBold),
+                        color = if (palette.isDark) palette.selectedContent else palette.textPrimary,
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = draft.objectSummary.ifBlank { draft.mainGroup.title },
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = if (palette.isDark) {
+                            palette.selectedContent.copy(alpha = 0.82f)
+                        } else {
+                            palette.textSecondary
+                        },
+                    )
+                }
+            }
+
+            Column(modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(if (palette.isDark) palette.accentStrong else palette.accent),
+                        )
+                        if (draft.showsDestinationSection) {
+                            Box(
+                                modifier = Modifier
+                                    .width(2.dp)
+                                    .height(34.dp)
+                                    .background(palette.borderStrong),
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .size(9.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(palette.textPrimary),
+                            )
+                        }
+                    }
+
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        PreviewRouteRow(
+                            label = fromLabel,
+                            value = fromValue,
+                            palette = palette,
+                        )
+                        if (draft.showsDestinationSection) {
+                            PreviewRouteRow(
+                                label = "Куда",
+                                value = toValue,
+                                palette = palette,
+                            )
+                        }
+                    }
+                }
+            }
+
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 18.dp),
+                color = palette.border,
+            )
+
+            Column(
+                modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    PreviewMetaTile(
+                        modifier = Modifier.weight(1f),
+                        icon = urgencyIcon(draft.urgency),
+                        label = "Когда",
+                        value = draft.timeSummary,
+                        palette = palette,
+                    )
+                    PreviewMetaTile(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Outlined.HourglassBottom,
+                        label = "Длительность",
+                        value = durationValue,
+                        palette = palette,
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    PreviewMetaTile(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Outlined.LocalShipping,
+                        label = "Вес",
+                        value = weightValue,
+                        palette = palette,
+                    )
+                    PreviewMetaTile(
+                        modifier = Modifier.weight(1f),
+                        icon = Icons.Outlined.Inventory2,
+                        label = "Размер",
+                        value = sizeValue,
+                        palette = palette,
+                    )
+                }
+            }
+
+            if (conditionTitles.isNotEmpty()) {
+                Column(
+                    modifier = Modifier.padding(start = 18.dp, end = 18.dp, bottom = 16.dp),
+                ) {
+                    Text(
+                        text = "Условия",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = palette.textSecondary,
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        conditionTitles.forEach { title ->
+                            Surface(
+                                shape = RoundedCornerShape(999.dp),
+                                color = if (palette.isDark) palette.surfaceMuted else palette.sectionSurfaceAlt,
+                            ) {
+                                Text(
+                                    text = title,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = palette.textPrimary,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Surface(
+                color = palette.previewFooter,
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 18.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Рекомендуемая цена",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (palette.isDark) palette.textSecondary else palette.selectedContent,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = draft.recommendedPriceRange.text,
+                            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                            color = palette.textPrimary,
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(CircleShape)
+                            .background(if (palette.isDark) palette.accentSoft else palette.accentStrong),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Payments,
+                            contentDescription = null,
+                            tint = if (palette.isDark) palette.selectedContent else Color.White,
+                        )
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun SummaryLine(label: String, value: String) {
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+private fun PreviewRouteRow(
+    label: String,
+    value: String,
+    palette: CreateAdPalette,
+) {
+    Column {
         Text(
-            text = label,
-            style = MaterialTheme.typography.bodySmall,
-            color = TextSecondary,
-            modifier = Modifier.width(76.dp),
+            text = label.uppercase(),
+            style = MaterialTheme.typography.labelMedium,
+            color = palette.textSecondary,
         )
+        Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = value,
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-            color = TextPrimary,
-            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Medium),
+            color = palette.textPrimary,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
         )
+    }
+}
+
+@Composable
+private fun PreviewMetaTile(
+    icon: ImageVector,
+    label: String,
+    value: String,
+    palette: CreateAdPalette,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(if (palette.isDark) palette.surfaceMuted else palette.sectionSurfaceAlt)
+                .padding(8.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = palette.textSecondary,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = palette.textSecondary,
+            )
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = value,
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                color = palette.textPrimary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 
@@ -1027,23 +1320,25 @@ private fun MediaPreviewItem(
 
 @Composable
 private fun CreateInfoBanner(title: String, text: String) {
+    val palette = rememberCreateAdPalette()
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(InnerCardRadius),
-        color = CardBackground.copy(alpha = 0.82f),
-        border = BorderStroke(1.dp, TurquoiseAccent.copy(alpha = 0.18f)),
+        color = palette.sectionSurfaceAlt,
+        border = BorderStroke(1.dp, palette.border),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                color = TextPrimary,
+                color = palette.textPrimary,
             )
             Spacer(modifier = Modifier.height(6.dp))
             Text(
                 text = text,
                 style = MaterialTheme.typography.bodySmall,
-                color = TextSecondary,
+                color = palette.textSecondary,
             )
         }
     }
@@ -1051,11 +1346,12 @@ private fun CreateInfoBanner(title: String, text: String) {
 
 @Composable
 private fun CreateWarningBanner(text: String, onDismiss: () -> Unit) {
+    val palette = rememberCreateAdPalette()
+
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(InnerCardRadius),
-        color = Color(0xFFFFF3E0),
-        border = BorderStroke(1.dp, Color(0xFFE8A16C).copy(alpha = 0.4f)),
+        color = palette.warningSurface,
     ) {
         Row(
             modifier = Modifier.padding(14.dp),
@@ -1064,19 +1360,20 @@ private fun CreateWarningBanner(text: String, onDismiss: () -> Unit) {
             Icon(
                 imageVector = Icons.Outlined.Warning,
                 contentDescription = null,
-                tint = Color(0xFFE8A16C),
+                tint = palette.warningContent,
             )
             Spacer(modifier = Modifier.width(10.dp))
             Text(
                 text = text,
                 style = MaterialTheme.typography.bodySmall,
-                color = TextPrimary,
+                color = palette.warningContent,
                 modifier = Modifier.weight(1f),
             )
             IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
                 Icon(
                     imageVector = Icons.Outlined.Close,
                     contentDescription = "Скрыть сообщение",
+                    tint = palette.warningContent,
                     modifier = Modifier.size(16.dp),
                 )
             }
@@ -1087,11 +1384,12 @@ private fun CreateWarningBanner(text: String, onDismiss: () -> Unit) {
 @Composable
 private fun ModerationHelp(mark: DraftModerationMark?) {
     if (mark == null) return
+    val palette = rememberCreateAdPalette()
     Spacer(modifier = Modifier.height(6.dp))
     Text(
         text = mark.details,
         style = MaterialTheme.typography.bodySmall,
-        color = Color(0xFFE08D49),
+        color = palette.warningContent,
     )
 }
 
@@ -1103,17 +1401,18 @@ private fun DateTimeField(
     onValueChange: (String) -> Unit,
 ) {
     val context = LocalContext.current
+    val palette = rememberCreateAdPalette()
     Column {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = TextSecondary,
+            style = MaterialTheme.typography.labelLarge,
+            color = palette.textSecondary,
         )
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(6.dp))
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(18.dp))
                 .clickable {
                     showDateTimePicker(
                         initial = parsePickerInstant(value),
@@ -1121,24 +1420,24 @@ private fun DateTimeField(
                         onSelected = onValueChange,
                     )
                 },
-            shape = RoundedCornerShape(12.dp),
-            color = CardBackground,
-            border = BorderStroke(1.dp, TurquoiseAccent.copy(alpha = 0.18f)),
+            shape = RoundedCornerShape(18.dp),
+            color = palette.inputSurface,
+            border = BorderStroke(1.dp, palette.inputBorder),
         ) {
             Row(
-                modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(
                     imageVector = Icons.Outlined.CalendarMonth,
                     contentDescription = null,
-                    tint = TurquoiseAccent,
+                    tint = palette.accent,
                 )
                 Spacer(modifier = Modifier.width(10.dp))
                 Text(
                     text = value.ifBlank { placeholder },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (value.isBlank()) TextSecondary else TextPrimary,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (value.isBlank()) palette.textSecondary else palette.textPrimary,
                     modifier = Modifier.weight(1f),
                 )
             }
@@ -1308,6 +1607,6 @@ private fun conditionIcon(option: AnnouncementConditionOption): ImageVector = wh
     AnnouncementConditionOption.CallBeforeArrival -> Icons.Outlined.Phone
     AnnouncementConditionOption.RequiresConfirmationCode -> Icons.Outlined.Password
     AnnouncementConditionOption.Contactless -> Icons.Outlined.Person
-    AnnouncementConditionOption.RequiresReceipt -> Icons.Outlined.ReceiptLong
+    AnnouncementConditionOption.RequiresReceipt -> Icons.AutoMirrored.Outlined.ReceiptLong
     AnnouncementConditionOption.PhotoReportRequired -> Icons.Outlined.CameraAlt
 }

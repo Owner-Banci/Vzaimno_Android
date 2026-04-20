@@ -9,6 +9,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -41,8 +43,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -56,30 +61,125 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// ── Design tokens ───────────────────────────────────────────────────────
-
-val TurquoiseAccent = Color(0xFF3CC8C4)
-val MilkBackground = Color(0xFFF7F3E9)
-val CardBackground = Color.White
-val PeachBadge = Color(0xFFFFC9A6)
-val TextPrimary = Color.Black.copy(alpha = 0.90f)
-val TextSecondary = Color.Black.copy(alpha = 0.60f)
-val ShadowColor = Color.Black.copy(alpha = 0.08f)
-
-val SectionCardRadius = 18.dp
-val InnerCardRadius = 16.dp
-val ButtonRadius = 16.dp
-val SmallChipRadius = 14.dp
-val LargeChipRadius = 18.dp
-val GalleryImageRadius = 14.dp
+val SectionCardRadius = 26.dp
+val InnerCardRadius = 20.dp
+val ButtonRadius = 30.dp
+val SmallChipRadius = 16.dp
+val LargeChipRadius = 22.dp
+val GalleryImageRadius = 18.dp
 
 val ScreenHorizontalPadding = 20.dp
 val SectionVerticalGap = 16.dp
-val InnerCardPadding = 20.dp
+val InnerCardPadding = 18.dp
 
-// ════════════════════════════════════════════════════════════════════════
-//  SECTION CARD — white card with turquoise border
-// ════════════════════════════════════════════════════════════════════════
+@Immutable
+internal data class CreateAdPalette(
+    val isDark: Boolean,
+    val screenBackground: Color,
+    val topBarBackground: Color,
+    val sectionSurface: Color,
+    val sectionSurfaceAlt: Color,
+    val surfaceMuted: Color,
+    val border: Color,
+    val borderStrong: Color,
+    val textPrimary: Color,
+    val textSecondary: Color,
+    val accent: Color,
+    val accentSoft: Color,
+    val accentStrong: Color,
+    val selectedContainer: Color,
+    val selectedContent: Color,
+    val selectedIconContainer: Color,
+    val selectedIconContent: Color,
+    val inputSurface: Color,
+    val inputBorder: Color,
+    val noticeSurface: Color,
+    val noticeContent: Color,
+    val warningSurface: Color,
+    val warningContent: Color,
+    val ctaContainer: Color,
+    val ctaContent: Color,
+    val previewHeroStart: Color,
+    val previewHeroEnd: Color,
+    val previewFooter: Color,
+    val previewChip: Color,
+    val previewChipContent: Color,
+    val shadow: Color,
+)
+
+@Composable
+internal fun rememberCreateAdPalette(): CreateAdPalette {
+    val scheme = MaterialTheme.colorScheme
+    return if (isSystemInDarkTheme()) {
+        CreateAdPalette(
+            isDark = true,
+            screenBackground = Color(0xFF0B100F),
+            topBarBackground = Color(0xFF0B100F),
+            sectionSurface = Color(0xFF101615),
+            sectionSurfaceAlt = Color(0xFF151C1A),
+            surfaceMuted = Color(0xFF1D2523),
+            border = Color(0xFF2F3A38),
+            borderStrong = Color(0xFF586763),
+            textPrimary = Color(0xFFE7EDE9),
+            textSecondary = Color(0xFFA4AFAB),
+            accent = scheme.primary,
+            accentSoft = Color(0xFF4F615D),
+            accentStrong = Color(0xFFD7E8E2),
+            selectedContainer = Color(0xFF52645F),
+            selectedContent = Color(0xFFF0F7F4),
+            selectedIconContainer = Color(0xFFE4ECE8),
+            selectedIconContent = Color(0xFF253431),
+            inputSurface = Color(0xFF0C1211),
+            inputBorder = Color(0xFF566660),
+            noticeSurface = Color(0xFF3E5675),
+            noticeContent = Color(0xFFDCE8FF),
+            warningSurface = Color(0xFF3A2B21),
+            warningContent = Color(0xFFFFDABD),
+            ctaContainer = Color(0xFFD2E6E0),
+            ctaContent = Color(0xFF263531),
+            previewHeroStart = Color(0xFF52635F),
+            previewHeroEnd = Color(0xFF4B5B57),
+            previewFooter = Color(0xFF202624),
+            previewChip = Color(0xFF121816),
+            previewChipContent = Color(0xFFDCE8E3),
+            shadow = Color.Black.copy(alpha = 0.28f),
+        )
+    } else {
+        CreateAdPalette(
+            isDark = false,
+            screenBackground = scheme.background,
+            topBarBackground = scheme.background,
+            sectionSurface = Color(0xFFFFFCF8),
+            sectionSurfaceAlt = Color.White,
+            surfaceMuted = Color(0xFFF4EEE2),
+            border = Color(0xFFE5DDD0),
+            borderStrong = Color(0xFFD7CFBF),
+            textPrimary = Color(0xFF2F2A26),
+            textSecondary = Color(0xFF7A7267),
+            accent = scheme.primary,
+            accentSoft = scheme.primaryContainer,
+            accentStrong = Color(0xFF214F4E),
+            selectedContainer = Color(0xFFD2F2EE),
+            selectedContent = Color(0xFF315B59),
+            selectedIconContainer = Color(0xFF23504F),
+            selectedIconContent = Color(0xFFF8FFFD),
+            inputSurface = Color.White,
+            inputBorder = Color(0xFFE1D9CC),
+            noticeSurface = Color(0xFFE8F0FB),
+            noticeContent = Color(0xFF3D5872),
+            warningSurface = Color(0xFFF7E8DB),
+            warningContent = Color(0xFF87552F),
+            ctaContainer = scheme.primary,
+            ctaContent = scheme.onPrimary,
+            previewHeroStart = Color(0xFFDDF5F1),
+            previewHeroEnd = Color(0xFFCBEAE4),
+            previewFooter = Color(0xFFE6F7F3),
+            previewChip = Color(0xFF214F4E),
+            previewChipContent = Color(0xFFF7FFFD),
+            shadow = Color.Black.copy(alpha = 0.08f),
+        )
+    }
+}
 
 @Composable
 fun CreateAdSectionCard(
@@ -89,50 +189,45 @@ fun CreateAdSectionCard(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
+    val palette = rememberCreateAdPalette()
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(SectionCardRadius),
-        colors = CardDefaults.cardColors(
-            containerColor = CardBackground.copy(alpha = 0.55f),
-        ),
-        border = BorderStroke(1.dp, TurquoiseAccent.copy(alpha = 0.25f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        colors = CardDefaults.cardColors(containerColor = palette.sectionSurface),
+        border = BorderStroke(1.dp, palette.border),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (palette.isDark) 0.dp else 1.dp),
     ) {
         Column(modifier = Modifier.padding(InnerCardPadding)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary,
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                    color = palette.textPrimary,
                     modifier = Modifier.weight(1f),
                 )
                 if (moderationMark != null) {
                     Icon(
                         imageVector = Icons.Outlined.Warning,
                         contentDescription = "Модерация",
-                        tint = Color(0xFFE8A16C),
-                        modifier = Modifier.size(20.dp),
+                        tint = palette.warningContent,
+                        modifier = Modifier.size(18.dp),
                     )
                 }
             }
-            if (subtitle != null) {
-                Spacer(Modifier.height(4.dp))
+            if (!subtitle.isNullOrBlank()) {
+                Spacer(Modifier.height(6.dp))
                 Text(
                     text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = palette.textSecondary,
                 )
             }
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(16.dp))
             content()
         }
     }
 }
-
-// ════════════════════════════════════════════════════════════════════════
-//  CHOICE CHIP — large action chips (2-column grid)
-// ════════════════════════════════════════════════════════════════════════
 
 @Composable
 fun CreateAdChoiceChip(
@@ -144,9 +239,15 @@ fun CreateAdChoiceChip(
     modifier: Modifier = Modifier,
     compact: Boolean = false,
 ) {
-    val bgColor = if (selected) TurquoiseAccent else CardBackground.copy(alpha = 0.72f)
-    val textColor = if (selected) Color.White else TextPrimary
-    val borderColor = if (selected) TurquoiseAccent else TurquoiseAccent.copy(alpha = 0.25f)
+    val palette = rememberCreateAdPalette()
+    val containerColor = when {
+        selected -> palette.selectedContainer
+        compact -> palette.sectionSurfaceAlt
+        else -> palette.sectionSurfaceAlt
+    }
+    val borderColor = if (selected) Color.Transparent else palette.border
+    val titleColor = if (selected) palette.selectedContent else palette.textPrimary
+    val subtitleColor = if (selected) palette.selectedContent.copy(alpha = 0.78f) else palette.textSecondary
     val shape = RoundedCornerShape(if (compact) SmallChipRadius else LargeChipRadius)
 
     Surface(
@@ -154,41 +255,66 @@ fun CreateAdChoiceChip(
             .clip(shape)
             .clickable(onClick = onClick),
         shape = shape,
-        color = bgColor,
+        color = containerColor,
         border = BorderStroke(1.dp, borderColor),
-        shadowElevation = if (selected) 2.dp else 0.dp,
+        shadowElevation = if (selected && !palette.isDark && !compact) 1.dp else 0.dp,
     ) {
         Row(
             modifier = Modifier.padding(
                 horizontal = if (compact) 12.dp else 14.dp,
-                vertical = if (compact) 8.dp else 12.dp,
+                vertical = if (compact) 10.dp else 14.dp,
             ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (icon != null) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = textColor,
-                    modifier = Modifier.size(if (compact) 16.dp else 20.dp),
-                )
-                Spacer(Modifier.width(8.dp))
+                if (compact) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = if (selected) palette.selectedContent else palette.textSecondary,
+                        modifier = Modifier.size(18.dp),
+                    )
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(34.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(
+                                if (selected) palette.selectedIconContainer else palette.surfaceMuted,
+                            ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = null,
+                            tint = if (selected) palette.selectedIconContent else palette.textSecondary,
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
+                Spacer(Modifier.width(if (compact) 8.dp else 10.dp))
             }
+
             Column(modifier = Modifier.weight(1f, fill = false)) {
                 Text(
                     text = text,
-                    style = if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium,
+                    style = if (compact) {
+                        MaterialTheme.typography.bodyMedium
+                    } else {
+                        MaterialTheme.typography.bodyLarge
+                    },
                     fontWeight = FontWeight.Medium,
-                    color = textColor,
-                    maxLines = 1,
+                    color = titleColor,
+                    maxLines = if (compact) 1 else 2,
                     overflow = TextOverflow.Ellipsis,
                 )
                 if (subtitle != null && !compact) {
+                    Spacer(Modifier.height(2.dp))
                     Text(
                         text = subtitle,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = textColor.copy(alpha = 0.7f),
-                        maxLines = 1,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = subtitleColor,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
@@ -196,10 +322,6 @@ fun CreateAdChoiceChip(
         }
     }
 }
-
-// ════════════════════════════════════════════════════════════════════════
-//  TOGGLE TILE — condition tiles with check circle
-// ════════════════════════════════════════════════════════════════════════
 
 @Composable
 fun CreateAdToggleTile(
@@ -210,25 +332,25 @@ fun CreateAdToggleTile(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val bgColor = if (selected) TurquoiseAccent.copy(alpha = 0.10f) else Color.Transparent
+    val palette = rememberCreateAdPalette()
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(18.dp))
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        color = bgColor,
+        shape = RoundedCornerShape(18.dp),
+        color = if (selected) palette.selectedContainer.copy(alpha = if (palette.isDark) 0.82f else 0.78f) else Color.Transparent,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 13.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (icon != null) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = if (selected) TurquoiseAccent else TextSecondary,
+                    tint = if (selected) palette.selectedContent else palette.textSecondary,
                     modifier = Modifier.size(22.dp),
                 )
                 Spacer(Modifier.width(12.dp))
@@ -236,55 +358,36 @@ fun CreateAdToggleTile(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = TextPrimary,
+                    style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                    color = if (selected) palette.selectedContent else palette.textPrimary,
                 )
                 Text(
                     text = subtitle,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TextSecondary,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (selected) palette.selectedContent.copy(alpha = 0.75f) else palette.textSecondary,
                 )
             }
             Spacer(Modifier.width(8.dp))
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .clip(CircleShape)
-                    .background(
-                        if (selected) TurquoiseAccent else Color.Transparent,
-                        CircleShape,
-                    )
-                    .then(
-                        if (!selected) Modifier.background(
-                            Color.Transparent, CircleShape,
-                        ) else Modifier
-                    ),
-                contentAlignment = Alignment.Center,
+            Surface(
+                modifier = Modifier.size(26.dp),
+                shape = CircleShape,
+                color = if (selected) palette.selectedIconContainer else Color.Transparent,
+                border = if (selected) null else BorderStroke(1.5.dp, palette.borderStrong),
             ) {
-                if (selected) {
-                    Icon(
-                        imageVector = Icons.Outlined.Check,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp),
-                    )
-                } else {
-                    Surface(
-                        modifier = Modifier.size(24.dp),
-                        shape = CircleShape,
-                        color = Color.Transparent,
-                        border = BorderStroke(1.5.dp, TextSecondary.copy(alpha = 0.3f)),
-                    ) {}
+                Box(contentAlignment = Alignment.Center) {
+                    if (selected) {
+                        Icon(
+                            imageVector = Icons.Outlined.Check,
+                            contentDescription = null,
+                            tint = palette.selectedIconContent,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
                 }
             }
         }
     }
 }
-
-// ════════════════════════════════════════════════════════════════════════
-//  INFO TAG — small pill label
-// ════════════════════════════════════════════════════════════════════════
 
 @Composable
 fun CreateAdInfoTag(
@@ -292,36 +395,34 @@ fun CreateAdInfoTag(
     icon: ImageVector? = null,
     modifier: Modifier = Modifier,
 ) {
+    val palette = rememberCreateAdPalette()
+
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(10.dp),
-        color = CardBackground.copy(alpha = 0.80f),
+        color = palette.surfaceMuted,
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             if (icon != null) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = TextSecondary,
+                    tint = palette.textSecondary,
                     modifier = Modifier.size(14.dp),
                 )
                 Spacer(Modifier.width(4.dp))
             }
             Text(
                 text = text,
-                style = MaterialTheme.typography.labelSmall,
-                color = TextSecondary,
+                style = MaterialTheme.typography.labelMedium,
+                color = palette.textSecondary,
             )
         }
     }
 }
-
-// ════════════════════════════════════════════════════════════════════════
-//  STICKY MINI SUMMARY
-// ════════════════════════════════════════════════════════════════════════
 
 @Composable
 fun CreateAdStickyMiniSummary(
@@ -334,32 +435,61 @@ fun CreateAdStickyMiniSummary(
     isExpanded: Boolean,
     onToggle: () -> Unit,
     modifier: Modifier = Modifier,
+    leadingIcon: ImageVector = Icons.Outlined.Inventory2,
 ) {
+    val palette = rememberCreateAdPalette()
+    val heading = buildString {
+        append(actionText.ifBlank { title })
+        if (objectText.isNotBlank() && objectText != "Без деталей") {
+            append(" · ")
+            append(objectText)
+        }
+    }.ifBlank { title }
+
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .shadow(6.dp, RoundedCornerShape(SectionCardRadius), ambientColor = ShadowColor, spotColor = ShadowColor),
-            color = CardBackground.copy(alpha = 0.94f),
+            .shadow(
+                elevation = if (palette.isDark) 0.dp else 4.dp,
+                shape = RoundedCornerShape(SectionCardRadius),
+                ambientColor = palette.shadow,
+                spotColor = palette.shadow,
+            ),
+        color = palette.sectionSurface,
         shape = RoundedCornerShape(SectionCardRadius),
-        border = BorderStroke(1.dp, TurquoiseAccent.copy(alpha = 0.18f)),
+        border = BorderStroke(1.dp, palette.border),
     ) {
         Column(
             modifier = Modifier
-                .padding(horizontal = 16.dp, vertical = 10.dp)
+                .padding(horizontal = 14.dp, vertical = 12.dp)
                 .animateContentSize(
                     animationSpec = spring(
-                        dampingRatio = 0.9f,
+                        dampingRatio = 0.92f,
                         stiffness = Spring.StiffnessMediumLow,
                     ),
                 ),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(palette.surfaceMuted),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        imageVector = leadingIcon,
+                        contentDescription = null,
+                        tint = palette.textSecondary,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
                 Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary,
-                    maxLines = if (isExpanded) 2 else 1,
+                    text = heading,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = palette.textPrimary,
+                    maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
@@ -370,16 +500,10 @@ fun CreateAdStickyMiniSummary(
                     Icon(
                         imageVector = if (isExpanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
                         contentDescription = if (isExpanded) "Свернуть" else "Развернуть",
-                        tint = TurquoiseAccent,
+                        tint = palette.textSecondary,
                         modifier = Modifier.size(20.dp),
                     )
                 }
-            }
-
-            Spacer(Modifier.height(6.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                CreateAdMiniTag(text = actionText)
-                CreateAdMiniTag(text = objectText)
             }
 
             AnimatedVisibility(
@@ -387,10 +511,12 @@ fun CreateAdStickyMiniSummary(
                 enter = expandVertically(),
                 exit = shrinkVertically(),
             ) {
-                Column(modifier = Modifier.padding(top = 8.dp)) {
-                    CreateAdSummaryRow(label = "Маршрут", value = routeSummary)
-                    CreateAdSummaryRow(label = "Когда", value = timeSummary)
-                    CreateAdSummaryRow(label = "Цена", value = priceSummary)
+                Column(modifier = Modifier.padding(top = 12.dp)) {
+                    HorizontalDivider(color = palette.border)
+                    Spacer(Modifier.height(10.dp))
+                    CreateAdSummaryRow(label = "Маршрут", value = routeSummary, palette = palette)
+                    CreateAdSummaryRow(label = "Когда", value = timeSummary, palette = palette)
+                    CreateAdSummaryRow(label = "Цена", value = priceSummary, palette = palette)
                 }
             }
         }
@@ -398,41 +524,27 @@ fun CreateAdStickyMiniSummary(
 }
 
 @Composable
-private fun CreateAdMiniTag(text: String) {
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = TurquoiseAccent.copy(alpha = 0.2f),
-    ) {
+private fun CreateAdSummaryRow(
+    label: String,
+    value: String,
+    palette: CreateAdPalette,
+) {
+    Row(modifier = Modifier.padding(vertical = 3.dp)) {
         Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall,
-            color = TurquoiseAccent,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-        )
-    }
-}
-
-@Composable
-private fun CreateAdSummaryRow(label: String, value: String) {
-    Row(modifier = Modifier.padding(vertical = 2.dp)) {
-        Text(
-            text = "$label: ",
-            style = MaterialTheme.typography.labelSmall,
-            color = TextSecondary,
+            text = label,
+            style = MaterialTheme.typography.bodySmall,
+            color = palette.textSecondary,
+            modifier = Modifier.width(58.dp),
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.labelSmall,
-            color = TextPrimary,
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+            color = palette.textPrimary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
     }
 }
-
-// ════════════════════════════════════════════════════════════════════════
-//  SUMMARY CARD — gradient accent card for final section
-// ════════════════════════════════════════════════════════════════════════
 
 @Composable
 fun CreateAdSummaryCard(
@@ -443,21 +555,20 @@ fun CreateAdSummaryCard(
     budgetSummary: String,
     modifier: Modifier = Modifier,
 ) {
+    val palette = rememberCreateAdPalette()
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(InnerCardRadius),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (palette.isDark) 0.dp else 1.dp),
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(
-                            TurquoiseAccent.copy(alpha = 0.18f),
-                            CardBackground.copy(alpha = 0.84f),
-                        ),
+                    Brush.linearGradient(
+                        colors = listOf(palette.previewHeroStart, palette.sectionSurfaceAlt),
                     ),
                 )
                 .padding(16.dp),
@@ -465,18 +576,17 @@ fun CreateAdSummaryCard(
             Column {
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = palette.textPrimary,
                 )
                 if (tags.isNotEmpty()) {
                     Spacer(Modifier.height(8.dp))
-                    FlowRowTags(tags)
+                    FlowRowTags(tags = tags, palette = palette)
                 }
                 Spacer(Modifier.height(10.dp))
-                SummaryDetailRow("Маршрут", routeSummary)
-                SummaryDetailRow("Когда", timeSummary)
-                SummaryDetailRow("Цена", budgetSummary)
+                SummaryDetailRow("Маршрут", routeSummary, palette = palette)
+                SummaryDetailRow("Когда", timeSummary, palette = palette)
+                SummaryDetailRow("Цена", budgetSummary, palette = palette)
             }
         }
     }
@@ -484,18 +594,24 @@ fun CreateAdSummaryCard(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun FlowRowTags(tags: List<String>) {
-    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+private fun FlowRowTags(
+    tags: List<String>,
+    palette: CreateAdPalette,
+) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
         tags.forEach { tag ->
             Surface(
                 shape = RoundedCornerShape(8.dp),
-                color = TurquoiseAccent.copy(alpha = 0.12f),
+                color = palette.surfaceMuted,
             ) {
                 Text(
                     text = tag,
                     style = MaterialTheme.typography.labelSmall,
-                    color = TurquoiseAccent,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                    color = palette.textSecondary,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                 )
             }
         }
@@ -503,27 +619,26 @@ private fun FlowRowTags(tags: List<String>) {
 }
 
 @Composable
-private fun SummaryDetailRow(label: String, value: String) {
+private fun SummaryDetailRow(
+    label: String,
+    value: String,
+    palette: CreateAdPalette,
+) {
     Row(modifier = Modifier.padding(vertical = 2.dp)) {
         Text(
             text = "$label: ",
             style = MaterialTheme.typography.bodySmall,
-            color = TextSecondary,
+            color = palette.textSecondary,
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Medium,
-            color = TextPrimary,
+            style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+            color = palette.textPrimary,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
     }
 }
-
-// ════════════════════════════════════════════════════════════════════════
-//  RECOMMENDED PRICE VIEW
-// ════════════════════════════════════════════════════════════════════════
 
 @Composable
 fun CreateAdRecommendedPriceView(
@@ -531,70 +646,72 @@ fun CreateAdRecommendedPriceView(
     subtitle: String,
     modifier: Modifier = Modifier,
 ) {
+    val palette = rememberCreateAdPalette()
+
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(InnerCardRadius),
-        color = TurquoiseAccent.copy(alpha = 0.10f),
+        color = if (palette.isDark) palette.accentSoft else palette.previewHeroEnd,
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = "Рекомендуемая цена",
                 style = MaterialTheme.typography.labelMedium,
-                color = TextSecondary,
+                color = if (palette.isDark) palette.selectedContent.copy(alpha = 0.78f) else palette.selectedContent,
             )
             Spacer(Modifier.height(4.dp))
             Text(
                 text = priceText,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = TextPrimary,
+                color = if (palette.isDark) palette.selectedContent else palette.textPrimary,
             )
             Spacer(Modifier.height(4.dp))
             Text(
                 text = subtitle,
-                style = MaterialTheme.typography.labelSmall,
-                color = TextSecondary,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (palette.isDark) palette.selectedContent.copy(alpha = 0.72f) else palette.textSecondary,
             )
         }
     }
 }
-
-// ════════════════════════════════════════════════════════════════════════
-//  READINESS CARD — bullet list of issues
-// ════════════════════════════════════════════════════════════════════════
 
 @Composable
 fun CreateAdReadinessCard(
     issues: List<String>,
     modifier: Modifier = Modifier,
 ) {
+    val palette = rememberCreateAdPalette()
+
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(InnerCardRadius),
-        color = Color(0xFFFFF3E0),
-        border = BorderStroke(1.dp, Color(0xFFE8A16C).copy(alpha = 0.4f)),
+        color = palette.noticeSurface,
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = "Чтобы отправить объявление, осталось:",
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Medium,
-                color = TextPrimary,
+                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
+                color = palette.noticeContent,
             )
             Spacer(Modifier.height(8.dp))
             issues.take(6).forEach { issue ->
                 Row(modifier = Modifier.padding(vertical = 2.dp)) {
-                    Text(text = "•  ", color = Color(0xFFE8A16C), style = MaterialTheme.typography.bodySmall)
-                    Text(text = issue, style = MaterialTheme.typography.bodySmall, color = TextPrimary)
+                    Text(
+                        text = "•  ",
+                        color = palette.noticeContent,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Text(
+                        text = issue,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = palette.noticeContent,
+                    )
                 }
             }
         }
     }
 }
-
-// ════════════════════════════════════════════════════════════════════════
-//  TEXT FIELD / VALUE FIELD / BUDGET RANGE
-// ════════════════════════════════════════════════════════════════════════
 
 @Composable
 fun CreateAdTextField(
@@ -604,36 +721,75 @@ fun CreateAdTextField(
     modifier: Modifier = Modifier,
     placeholder: String = "",
     moderationMark: DraftModerationMark? = null,
+    leadingIcon: ImageVector? = null,
+    trailingIcon: ImageVector? = null,
 ) {
+    val palette = rememberCreateAdPalette()
+
     Column(modifier = modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = TextSecondary,
+                style = MaterialTheme.typography.labelLarge,
+                color = palette.textSecondary,
                 modifier = Modifier.weight(1f),
             )
             if (moderationMark != null) {
                 Icon(
                     imageVector = Icons.Outlined.Warning,
                     contentDescription = null,
-                    tint = Color(0xFFE8A16C),
+                    tint = palette.warningContent,
                     modifier = Modifier.size(16.dp),
                 )
             }
         }
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(6.dp))
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            placeholder = { Text(placeholder, style = MaterialTheme.typography.bodyMedium) },
+            placeholder = {
+                Text(
+                    text = placeholder,
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            },
             singleLine = true,
+            leadingIcon = leadingIcon?.let { icon ->
+                {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = palette.textSecondary,
+                    )
+                }
+            },
+            trailingIcon = trailingIcon?.let { icon ->
+                {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = palette.accent,
+                    )
+                }
+            },
             modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            textStyle = MaterialTheme.typography.bodyLarge,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = TurquoiseAccent,
-                unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f),
+                focusedTextColor = palette.textPrimary,
+                unfocusedTextColor = palette.textPrimary,
+                focusedBorderColor = palette.accent,
+                unfocusedBorderColor = palette.inputBorder,
+                focusedContainerColor = palette.inputSurface,
+                unfocusedContainerColor = palette.inputSurface,
+                focusedPlaceholderColor = palette.textSecondary,
+                unfocusedPlaceholderColor = palette.textSecondary,
+                focusedLeadingIconColor = palette.textSecondary,
+                unfocusedLeadingIconColor = palette.textSecondary,
+                focusedTrailingIconColor = palette.accent,
+                unfocusedTrailingIconColor = palette.accent,
+                cursorColor = palette.accent,
             ),
-            shape = RoundedCornerShape(12.dp),
         )
     }
 }
@@ -647,28 +803,51 @@ fun CreateAdValueField(
     modifier: Modifier = Modifier,
     placeholder: String = "",
 ) {
+    val palette = rememberCreateAdPalette()
+
     Column(modifier = modifier) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = TextSecondary,
+            style = MaterialTheme.typography.labelLarge,
+            color = palette.textSecondary,
         )
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(6.dp))
         OutlinedTextField(
             value = value,
-            onValueChange = { newVal -> onValueChange(newVal.filter { it.isDigit() }) },
-            placeholder = { Text(placeholder, style = MaterialTheme.typography.bodyMedium) },
+            onValueChange = { newValue -> onValueChange(newValue.filter { it.isDigit() }) },
+            placeholder = {
+                Text(
+                    text = placeholder,
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             trailingIcon = if (trailingUnit.isNotBlank()) {
-                { Text(trailingUnit, color = TextSecondary) }
-            } else null,
+                {
+                    Text(
+                        text = trailingUnit,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = palette.textSecondary,
+                    )
+                }
+            } else {
+                null
+            },
             modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(18.dp),
+            textStyle = MaterialTheme.typography.bodyLarge,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = TurquoiseAccent,
-                unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f),
+                focusedTextColor = palette.textPrimary,
+                unfocusedTextColor = palette.textPrimary,
+                focusedBorderColor = palette.accent,
+                unfocusedBorderColor = palette.inputBorder,
+                focusedContainerColor = palette.inputSurface,
+                unfocusedContainerColor = palette.inputSurface,
+                focusedPlaceholderColor = palette.textSecondary,
+                unfocusedPlaceholderColor = palette.textSecondary,
+                cursorColor = palette.accent,
             ),
-            shape = RoundedCornerShape(12.dp),
         )
     }
 }
@@ -683,7 +862,10 @@ fun CreateAdBudgetRangeField(
     maxPlaceholder: String = "",
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
         CreateAdValueField(
             label = "От",
             value = minValue,
@@ -703,10 +885,6 @@ fun CreateAdBudgetRangeField(
     }
 }
 
-// ════════════════════════════════════════════════════════════════════════
-//  TEXT AREA
-// ════════════════════════════════════════════════════════════════════════
-
 @Composable
 fun CreateAdTextArea(
     label: String,
@@ -715,33 +893,44 @@ fun CreateAdTextArea(
     placeholder: String = "",
     modifier: Modifier = Modifier,
 ) {
+    val palette = rememberCreateAdPalette()
+
     Column(modifier = modifier) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = TextSecondary,
+            style = MaterialTheme.typography.labelLarge,
+            color = palette.textSecondary,
         )
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(6.dp))
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            placeholder = { Text(placeholder, style = MaterialTheme.typography.bodyMedium) },
+            placeholder = {
+                Text(
+                    text = placeholder,
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = 110.dp),
             maxLines = 8,
+            shape = RoundedCornerShape(18.dp),
+            textStyle = MaterialTheme.typography.bodyLarge,
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = TurquoiseAccent,
-                unfocusedBorderColor = Color.LightGray.copy(alpha = 0.5f),
+                focusedTextColor = palette.textPrimary,
+                unfocusedTextColor = palette.textPrimary,
+                focusedBorderColor = palette.accent,
+                unfocusedBorderColor = palette.inputBorder,
+                focusedContainerColor = palette.inputSurface,
+                unfocusedContainerColor = palette.inputSurface,
+                focusedPlaceholderColor = palette.textSecondary,
+                unfocusedPlaceholderColor = palette.textSecondary,
+                cursorColor = palette.accent,
             ),
-            shape = RoundedCornerShape(12.dp),
         )
     }
 }
-
-// ════════════════════════════════════════════════════════════════════════
-//  TOGGLE ROW (simple switch)
-// ════════════════════════════════════════════════════════════════════════
 
 @Composable
 fun CreateAdToggleRow(
@@ -750,6 +939,8 @@ fun CreateAdToggleRow(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val palette = rememberCreateAdPalette()
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -759,20 +950,24 @@ fun CreateAdToggleRow(
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.bodyMedium,
-            color = TextPrimary,
+            style = MaterialTheme.typography.bodyLarge,
+            color = palette.textPrimary,
             modifier = Modifier.weight(1f),
         )
-        androidx.compose.material3.Switch(
+        Switch(
             checked = checked,
             onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = if (palette.isDark) palette.sectionSurface else Color.White,
+                checkedTrackColor = palette.accentSoft,
+                checkedBorderColor = palette.accentSoft,
+                uncheckedThumbColor = Color(0xFFE9ECEA),
+                uncheckedTrackColor = palette.surfaceMuted,
+                uncheckedBorderColor = palette.borderStrong,
+            ),
         )
     }
 }
-
-// ════════════════════════════════════════════════════════════════════════
-//  BOTTOM BUTTON — primary CTA
-// ════════════════════════════════════════════════════════════════════════
 
 @Composable
 fun CreateAdBottomButton(
@@ -781,29 +976,40 @@ fun CreateAdBottomButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     isLoading: Boolean = false,
+    leadingIcon: ImageVector? = null,
 ) {
+    val palette = rememberCreateAdPalette()
+
     Button(
         onClick = onClick,
         enabled = enabled && !isLoading,
         modifier = modifier
             .fillMaxWidth()
-            .height(52.dp),
+            .height(58.dp),
         shape = RoundedCornerShape(ButtonRadius),
         colors = ButtonDefaults.buttonColors(
-            containerColor = TurquoiseAccent,
-            contentColor = Color.White,
-            disabledContainerColor = TurquoiseAccent.copy(alpha = 0.4f),
-            disabledContentColor = Color.White.copy(alpha = 0.6f),
+            containerColor = palette.ctaContainer,
+            contentColor = palette.ctaContent,
+            disabledContainerColor = palette.ctaContainer.copy(alpha = 0.45f),
+            disabledContentColor = palette.ctaContent.copy(alpha = 0.7f),
         ),
-        elevation = ButtonDefaults.buttonElevation(defaultElevation = 3.dp),
+        elevation = ButtonDefaults.buttonElevation(defaultElevation = if (palette.isDark) 0.dp else 2.dp),
     ) {
         if (isLoading) {
             androidx.compose.material3.CircularProgressIndicator(
                 modifier = Modifier.size(22.dp),
-                color = Color.White,
+                color = palette.ctaContent,
                 strokeWidth = 2.dp,
             )
         } else {
+            if (leadingIcon != null) {
+                Icon(
+                    imageVector = leadingIcon,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(8.dp))
+            }
             Text(
                 text = text,
                 fontWeight = FontWeight.SemiBold,
