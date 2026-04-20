@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,6 +29,9 @@ import com.yandex.mapkit.map.CameraPosition
 import com.yandex.mapkit.map.MapObjectTapListener
 import com.yandex.mapkit.mapview.MapView
 import com.yandex.runtime.image.ImageProvider
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 
 @Composable
 internal fun MapCanvas(
@@ -93,24 +97,59 @@ internal fun MapCanvas(
         currentOnMapLoaded()
     }
 
-    // Place markers with custom price badges
-    LaunchedEffect(isMapReady, state.announcements) {
+    // Per-composition bitmap cache keyed by label text — avoids re-rasterizing
+    // the same price pill when the list re-emits with identical items.
+    val bitmapCache = remember { mutableMapOf<String, android.graphics.Bitmap>() }
+
+    // Stable key: only re-run when the set of (id, label, lat, lng) actually
+    // changes. Without this, every syncPresentation() triggers a full rebuild
+    // even though the announcements are identical.
+    val markersKey by remember(state.announcements) {
+        derivedStateOf {
+            state.announcements.joinToString("|") { item ->
+                val geo = item.point
+                val label = item.budgetText ?: item.announcement.title.take(12)
+                "${item.announcement.id}:$label:${geo?.latitude}:${geo?.longitude}"
+            }
+        }
+    }
+
+    // Place markers with custom price badges. Heavy work (bitmap creation)
+    // runs on Dispatchers.Default; only MapKit writes happen on the main
+    // thread. A short debounce collapses rapid successive emissions.
+    LaunchedEffect(isMapReady, markersKey) {
         if (!isMapReady) return@LaunchedEffect
+        delay(60) // debounce burst updates
+
+        data class Prepared(
+            val id: String,
+            val point: Point,
+            val image: ImageProvider,
+        )
+
+        val announcements = state.announcements
+        val prepared = withContext(Dispatchers.Default) {
+            announcements.mapNotNull { item ->
+                val geo = item.point ?: return@mapNotNull null
+                val priceLabel = item.budgetText ?: item.announcement.title.take(12)
+                val bitmap = bitmapCache.getOrPut(priceLabel) {
+                    createPriceMarkerBitmap(priceLabel)
+                }
+                Prepared(
+                    id = item.announcement.id,
+                    point = Point(geo.latitude, geo.longitude),
+                    image = ImageProvider.fromBitmap(bitmap),
+                )
+            }
+        }
+
         val mapObjects = mapView.mapWindow.map.mapObjects
         mapObjects.clear()
-
-        state.announcements.forEach { item ->
-            val geo = item.point ?: return@forEach
-            val point = Point(geo.latitude, geo.longitude)
-
-            val priceLabel = item.budgetText ?: item.announcement.title.take(12)
-            val markerBitmap = createPriceMarkerBitmap(priceLabel)
-            val imageProvider = ImageProvider.fromBitmap(markerBitmap)
-
-            val placemark = mapObjects.addPlacemark(point, imageProvider)
+        prepared.forEach { marker ->
+            val placemark = mapObjects.addPlacemark(marker.point, marker.image)
             placemark.zIndex = 1f
             placemark.addTapListener(MapObjectTapListener { _, _ ->
-                currentOnOpenDetails(item.announcement.id)
+                currentOnOpenDetails(marker.id)
                 true
             })
         }

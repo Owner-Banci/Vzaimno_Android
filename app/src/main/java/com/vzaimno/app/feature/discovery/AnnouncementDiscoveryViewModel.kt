@@ -708,38 +708,58 @@ class AnnouncementDiscoveryViewModel @Inject constructor(
         }
     }
 
-    private fun syncPresentation() {
-        val state = _uiState.value
-        val baseItems = AnnouncementDiscoveryFilterEngine.buildItems(
-            announcements = allAnnouncements,
-            apiBaseUrl = state.apiBaseUrl,
-            filters = state.filters,
-            query = state.searchQuery,
-            currentUserId = activeSession.user?.id,
-            canRespondWithoutGate = canRespondWithoutGate(),
-            locallyRespondedIds = locallyRespondedIds,
-        )
-        val routeMatchedIds = state.routeState.matchedAnnouncements
-            .map { it.item.announcementId }
-            .toSet()
-        val items = if (state.filters.onlyOnRoute && state.routeState.isActive) {
-            baseItems.filter { item -> routeMatchedIds.contains(item.announcement.id) }
-        } else {
-            baseItems
-        }
-        val refreshedDetailsItem = state.detailsState.announcementId?.let(::buildItemForId)
+    private var syncJob: Job? = null
 
-        _uiState.update { current ->
-            current.copy(
-                totalAnnouncementCount = allAnnouncements.count(Announcement::canAppearOnMap),
-                announcements = items,
-                mapViewport = AnnouncementDiscoveryFilterEngine.buildMapViewport(items),
-                detailsState = if (current.detailsState.isVisible && refreshedDetailsItem != null) {
-                    current.detailsState.copy(item = refreshedDetailsItem)
+    private fun syncPresentation() {
+        syncJob?.cancel()
+        syncJob = viewModelScope.launch {
+            val state = _uiState.value
+            val snapshotAnnouncements = allAnnouncements
+            val currentUserId = activeSession.user?.id
+            val canRespondWithoutGate = canRespondWithoutGate()
+            val respondedSnapshot = locallyRespondedIds.toSet()
+
+            // Filtering + item construction can be O(n) with regex/text work —
+            // run it off the main thread so search typing and filter toggles
+            // don't stutter the UI.
+            val computed = withContext(Dispatchers.Default) {
+                val baseItems = AnnouncementDiscoveryFilterEngine.buildItems(
+                    announcements = snapshotAnnouncements,
+                    apiBaseUrl = state.apiBaseUrl,
+                    filters = state.filters,
+                    query = state.searchQuery,
+                    currentUserId = currentUserId,
+                    canRespondWithoutGate = canRespondWithoutGate,
+                    locallyRespondedIds = respondedSnapshot,
+                )
+                val routeMatchedIds = state.routeState.matchedAnnouncements
+                    .map { it.item.announcementId }
+                    .toSet()
+                val items = if (state.filters.onlyOnRoute && state.routeState.isActive) {
+                    baseItems.filter { item -> routeMatchedIds.contains(item.announcement.id) }
                 } else {
-                    current.detailsState
-                },
-            )
+                    baseItems
+                }
+                val totalCount = snapshotAnnouncements.count(Announcement::canAppearOnMap)
+                val viewport = AnnouncementDiscoveryFilterEngine.buildMapViewport(items)
+                Triple(items, totalCount, viewport)
+            }
+
+            val (items, totalCount, viewport) = computed
+            val refreshedDetailsItem = _uiState.value.detailsState.announcementId?.let(::buildItemForId)
+
+            _uiState.update { current ->
+                current.copy(
+                    totalAnnouncementCount = totalCount,
+                    announcements = items,
+                    mapViewport = viewport,
+                    detailsState = if (current.detailsState.isVisible && refreshedDetailsItem != null) {
+                        current.detailsState.copy(item = refreshedDetailsItem)
+                    } else {
+                        current.detailsState
+                    },
+                )
+            }
         }
     }
 
