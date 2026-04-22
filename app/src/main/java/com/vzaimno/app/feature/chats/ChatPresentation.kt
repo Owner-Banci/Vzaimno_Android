@@ -2,6 +2,8 @@ package com.vzaimno.app.feature.chats
 
 import com.vzaimno.app.core.model.ChatMessage
 import com.vzaimno.app.core.model.ChatThreadPreview
+import com.vzaimno.app.core.model.DisputeSettlementOption
+import com.vzaimno.app.core.model.DisputeState
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -189,4 +191,125 @@ fun formatDateDivider(epochSeconds: Long): String {
         today.minusDays(1) -> "Вчера"
         else -> date.format(DateTimeFormatter.ofPattern("d MMMM", locale))
     }
+}
+
+fun disputeSummaryText(dispute: DisputeState): String = when (dispute.status) {
+    "open_waiting_counterparty" ->
+        "Спор открыт пользователем ${dispute.openedByDisplayName}. Ожидается ответ второй стороны."
+
+    "model_thinking" -> "Идёт анализ спора моделью Gemini."
+    "waiting_clarification_answers" ->
+        "Модель задала уточняющие вопросы. Нужны официальные ответы сторон."
+
+    "waiting_round_1_votes" ->
+        "Опубликованы 3 варианта урегулирования. Ожидаются выборы сторон."
+
+    "waiting_round_2_votes" ->
+        "Запущен второй раунд с более компромиссными вариантами."
+
+    "resolved" -> dispute.resolutionSummary ?: "Спор закрыт."
+    "closed_by_acceptance" ->
+        dispute.resolutionSummary ?: "Спор закрыт по согласию второй стороны."
+
+    "awaiting_moderator" ->
+        dispute.resolutionSummary ?: "Автоматическая часть завершена. Ожидается модератор."
+
+    else -> "Спор в обработке."
+}
+
+fun disputeDeadlineText(epochSeconds: Long?): String? {
+    if (epochSeconds == null) return null
+    val nowSeconds = System.currentTimeMillis() / 1_000L
+    val remaining = (epochSeconds - nowSeconds).toInt()
+    if (remaining <= 0) return "Срок ответа истёк"
+    val hours = remaining / 3600
+    val minutes = (remaining % 3600) / 60
+    return if (hours > 0) "$hours ч $minutes мин" else "$minutes мин"
+}
+
+fun disputeOptionCompensationRub(
+    option: DisputeSettlementOption,
+    requestedCompensationRub: Int,
+): Int? {
+    option.compensationRub?.let { if (it > 0) return it }
+    val refundPercent = option.refundPercent ?: return null
+    if (requestedCompensationRub <= 0) return null
+    val amount = (requestedCompensationRub.toDouble() * refundPercent.toDouble() / 100.0)
+    val rounded = amount.let { Math.round(it).toInt() }
+    return if (rounded > 0) rounded else null
+}
+
+fun shortResolutionKindTitle(raw: String): String {
+    val value = raw.trim().lowercase(Locale.getDefault())
+    return when {
+        value.contains("return") || value.contains("refund") -> "Возврат"
+        value.contains("redo") || value.contains("rework") || value.contains("fix") -> "Переделка"
+        value.contains("replace") -> "Замена"
+        value.contains("cancel") -> "Отмена"
+        else -> "Вариант"
+    }
+}
+
+fun compactDisputeOptionTitle(
+    option: DisputeSettlementOption,
+    requestedCompensationRub: Int,
+): String {
+    val amount = disputeOptionCompensationRub(option, requestedCompensationRub)
+    if (amount != null) {
+        return "${formatRub(amount)} ₽"
+    }
+    return shortResolutionKindTitle(option.resolutionKind)
+}
+
+fun formatRub(amount: Int): String {
+    // Russian grouping: 1 500 -> "1 500"
+    val raw = amount.toString()
+    val builder = StringBuilder()
+    var count = 0
+    for (index in raw.indices.reversed()) {
+        builder.insert(0, raw[index])
+        count++
+        if (count == 3 && index != 0 && raw[index - 1] != '-') {
+            builder.insert(0, ' ')
+            count = 0
+        }
+    }
+    return builder.toString()
+}
+
+fun shouldShowCounterpartyTapTarget(
+    dispute: DisputeState?,
+    message: ChatMessage,
+    canRespondAsCounterparty: Boolean,
+): Boolean = evaluateCounterpartyTapTarget(
+    dispute = dispute,
+    isSystem = message.isSystem,
+    text = message.text,
+    canRespondAsCounterparty = canRespondAsCounterparty,
+)
+
+internal fun shouldShowCounterpartyTapTargetUi(
+    dispute: DisputeState?,
+    message: ChatMessageUi,
+    canRespondAsCounterparty: Boolean,
+): Boolean = evaluateCounterpartyTapTarget(
+    dispute = dispute,
+    isSystem = message.isSystem,
+    text = message.text,
+    canRespondAsCounterparty = canRespondAsCounterparty,
+)
+
+private fun evaluateCounterpartyTapTarget(
+    dispute: DisputeState?,
+    isSystem: Boolean,
+    text: String,
+    canRespondAsCounterparty: Boolean,
+): Boolean {
+    if (!canRespondAsCounterparty) return false
+    if (dispute == null) return false
+    if (!isSystem) return false
+    if (!text.contains("спор", ignoreCase = true)) return false
+    if (dispute.openedByDisplayName.isBlank()) return false
+    return text.contains(dispute.openedByDisplayName, ignoreCase = true) ||
+        text.contains("открыл", ignoreCase = true)
 }

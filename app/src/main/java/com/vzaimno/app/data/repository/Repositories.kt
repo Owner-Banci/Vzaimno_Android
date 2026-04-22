@@ -11,6 +11,7 @@ import com.vzaimno.app.core.model.AccessToken
 import com.vzaimno.app.core.model.Announcement
 import com.vzaimno.app.core.model.AnnouncementOffer
 import com.vzaimno.app.core.model.CreateAnnouncementDraft
+import com.vzaimno.app.core.model.DisputeState
 import com.vzaimno.app.core.model.EditableProfileFields
 import com.vzaimno.app.core.model.LoginCredentials
 import com.vzaimno.app.core.model.OfferPricingMode
@@ -40,11 +41,14 @@ import com.vzaimno.app.data.remote.DeviceApi
 import com.vzaimno.app.data.remote.ProfileApi
 import com.vzaimno.app.data.remote.RouteApi
 import com.vzaimno.app.data.remote.dto.AppealRequestDto
+import com.vzaimno.app.data.remote.dto.CounterpartyDisputeResponseRequestDto
 import com.vzaimno.app.data.remote.dto.CreateOfferRequestDto
 import com.vzaimno.app.data.remote.dto.DeviceRegistrationRequestDto
 import com.vzaimno.app.data.remote.dto.EmptyBodyDto
 import com.vzaimno.app.data.remote.dto.ExecutionStageUpdateRequestDto
+import com.vzaimno.app.data.remote.dto.OpenDisputeRequestDto
 import com.vzaimno.app.data.remote.dto.ReportSubmissionRequestDto
+import com.vzaimno.app.data.remote.dto.SelectDisputeOptionRequestDto
 import com.vzaimno.app.data.remote.dto.SendChatMessageRequestDto
 import com.vzaimno.app.data.remote.dto.SubmitReviewRequestDto
 import com.vzaimno.app.data.remote.dto.UnregisterDeviceRequestDto
@@ -139,6 +143,34 @@ interface ChatRepository {
         reasonCode: String,
         reasonText: String?,
     ): ApiResult<Unit>
+
+    suspend fun fetchActiveDispute(threadId: String): ApiResult<DisputeState?>
+    suspend fun openDispute(
+        threadId: String,
+        problemTitle: String,
+        problemDescription: String,
+        requestedCompensationRub: Int,
+        desiredResolution: String,
+    ): ApiResult<DisputeState>
+
+    suspend fun acceptCounterpartyDispute(
+        threadId: String,
+        disputeId: String,
+    ): ApiResult<DisputeState>
+
+    suspend fun respondCounterpartyDispute(
+        threadId: String,
+        disputeId: String,
+        responseDescription: String,
+        acceptableRefundPercent: Int,
+        desiredResolution: String,
+    ): ApiResult<DisputeState>
+
+    suspend fun selectDisputeOption(
+        threadId: String,
+        disputeId: String,
+        optionId: String,
+    ): ApiResult<DisputeState>
 }
 
 interface RouteRepository {
@@ -464,6 +496,78 @@ class DefaultChatRepository @Inject constructor(
             ),
         )
         Unit
+    }
+
+    override suspend fun fetchActiveDispute(threadId: String): ApiResult<DisputeState?> {
+        val result = repositoryCall {
+            chatApi.getActiveDispute(threadId)?.toDomain()
+        }
+        // Backward-compatible fallback: older backends respond 404 when no active dispute exists.
+        return when {
+            result is ApiResult.Failure && result.error.statusCode == 404 ->
+                ApiResult.Success(null)
+
+            else -> result
+        }
+    }
+
+    override suspend fun openDispute(
+        threadId: String,
+        problemTitle: String,
+        problemDescription: String,
+        requestedCompensationRub: Int,
+        desiredResolution: String,
+    ): ApiResult<DisputeState> = repositoryCall {
+        chatApi.openDispute(
+            threadId = threadId,
+            request = OpenDisputeRequestDto(
+                problemTitle = problemTitle,
+                problemDescription = problemDescription,
+                requestedCompensationRub = requestedCompensationRub.coerceAtLeast(0),
+                desiredResolution = desiredResolution,
+            ),
+        ).toDomain()
+    }
+
+    override suspend fun acceptCounterpartyDispute(
+        threadId: String,
+        disputeId: String,
+    ): ApiResult<DisputeState> = repositoryCall {
+        chatApi.acceptCounterpartyDispute(
+            threadId = threadId,
+            disputeId = disputeId,
+            body = EmptyBodyDto,
+        ).toDomain()
+    }
+
+    override suspend fun respondCounterpartyDispute(
+        threadId: String,
+        disputeId: String,
+        responseDescription: String,
+        acceptableRefundPercent: Int,
+        desiredResolution: String,
+    ): ApiResult<DisputeState> = repositoryCall {
+        chatApi.respondCounterpartyDispute(
+            threadId = threadId,
+            disputeId = disputeId,
+            request = CounterpartyDisputeResponseRequestDto(
+                responseDescription = responseDescription,
+                acceptableRefundPercent = acceptableRefundPercent.coerceIn(0, 100),
+                desiredResolution = desiredResolution,
+            ),
+        ).toDomain()
+    }
+
+    override suspend fun selectDisputeOption(
+        threadId: String,
+        disputeId: String,
+        optionId: String,
+    ): ApiResult<DisputeState> = repositoryCall {
+        chatApi.selectDisputeOption(
+            threadId = threadId,
+            disputeId = disputeId,
+            request = SelectDisputeOptionRequestDto(optionId = optionId),
+        ).toDomain()
     }
 
     private suspend fun <T> repositoryCall(block: suspend () -> T): ApiResult<T> =

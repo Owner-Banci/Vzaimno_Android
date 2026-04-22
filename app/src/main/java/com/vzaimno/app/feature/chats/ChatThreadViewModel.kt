@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vzaimno.app.core.model.ChatMessage
 import com.vzaimno.app.core.model.ChatThreadPreview
+import com.vzaimno.app.core.model.DisputeState
 import com.vzaimno.app.core.network.ApiResult
 import com.vzaimno.app.data.repository.ChatRepository
 import com.vzaimno.app.data.repository.ProfileRepository
@@ -51,6 +52,8 @@ class ChatThreadViewModel @Inject constructor(
     private var isActive = false
     private var previewHydrated = false
     private var transportJob: Job? = null
+    private var lastSystemMessageId: String? = null
+    private var disputeRefreshJob: Job? = null
 
     init {
         syncHeaderFromPreview()
@@ -96,6 +99,8 @@ class ChatThreadViewModel @Inject constructor(
     fun onDisappear() {
         isActive = false
         stopTransport()
+        disputeRefreshJob?.cancel()
+        disputeRefreshJob = null
         _uiState.update { state ->
             state.copy(
                 transportState = state.transportState.copy(
@@ -676,7 +681,398 @@ class ChatThreadViewModel @Inject constructor(
                 ),
             )
         }
+
+        maybeRefreshDisputeAfterMessages()
     }
+
+    private fun maybeRefreshDisputeAfterMessages() {
+        if (resolvedKind() == ChatConversationKind.Support) return
+
+        val latestSystemId = currentMessages.lastOrNull { it.isSystem }?.id
+        val shouldRefresh = _uiState.value.disputeState.activeDispute == null ||
+            latestSystemId != lastSystemMessageId
+
+        lastSystemMessageId = latestSystemId
+        if (shouldRefresh) {
+            loadActiveDispute(showLoader = false)
+        }
+    }
+
+    private fun loadActiveDispute(showLoader: Boolean) {
+        if (resolvedKind() == ChatConversationKind.Support) {
+            _uiState.update { state ->
+                state.copy(disputeState = state.disputeState.copy(activeDispute = null))
+            }
+            return
+        }
+        val threadId = resolvedThreadId() ?: return
+
+        disputeRefreshJob?.cancel()
+        disputeRefreshJob = viewModelScope.launch {
+            if (showLoader) {
+                _uiState.update { state ->
+                    state.copy(disputeState = state.disputeState.copy(isLoading = true))
+                }
+            }
+
+            when (val result = chatRepository.fetchActiveDispute(threadId)) {
+                is ApiResult.Success -> {
+                    _uiState.update { state ->
+                        state.copy(
+                            disputeState = state.disputeState.copy(
+                                isLoading = false,
+                                activeDispute = result.value,
+                                errorMessage = null,
+                            ),
+                        )
+                    }
+                }
+
+                is ApiResult.Failure -> {
+                    // Forbidden — silently ignore (viewer has no access). Other errors surface.
+                    val silent = result.error.kind == com.vzaimno.app.core.network.ApiErrorKind.Forbidden
+                    _uiState.update { state ->
+                        state.copy(
+                            disputeState = state.disputeState.copy(
+                                isLoading = false,
+                                errorMessage = if (silent) null else result.error.message,
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    // region Dispute public API
+
+    fun showOpenDisputeSheet() {
+        if (!_uiState.value.canShowOpenDisputeAction) return
+        _uiState.update { state ->
+            state.copy(
+                disputeState = state.disputeState.copy(
+                    openForm = state.disputeState.openForm.copy(
+                        isVisible = true,
+                        problemTitle = state.disputeState.openForm.problemTitle
+                            .ifBlank { "Спор по качеству выполнения" },
+                    ),
+                    errorMessage = null,
+                    successMessage = null,
+                ),
+            )
+        }
+    }
+
+    fun dismissOpenDisputeSheet() {
+        _uiState.update { state ->
+            state.copy(
+                disputeState = state.disputeState.copy(
+                    openForm = state.disputeState.openForm.copy(isVisible = false),
+                ),
+            )
+        }
+    }
+
+    fun updateOpenDisputeTitle(value: String) = updateOpenForm { it.copy(problemTitle = value) }
+    fun updateOpenDisputeDescription(value: String) = updateOpenForm { it.copy(problemDescription = value) }
+    fun updateOpenDisputeCompensation(value: String) =
+        updateOpenForm { it.copy(requestedCompensationText = value.filter(Char::isDigit)) }
+
+    fun updateOpenDisputeResolution(value: DisputeResolutionKind) =
+        updateOpenForm { it.copy(selectedResolution = value) }
+
+    private inline fun updateOpenForm(block: (DisputeOpenFormState) -> DisputeOpenFormState) {
+        _uiState.update { state ->
+            state.copy(
+                disputeState = state.disputeState.copy(
+                    openForm = block(state.disputeState.openForm),
+                ),
+            )
+        }
+    }
+
+    fun submitOpenDispute() {
+        val threadId = resolvedThreadId() ?: return
+        val form = _uiState.value.disputeState.openForm
+        val description = form.problemDescription.trim()
+        if (description.isEmpty() || _uiState.value.disputeState.isSubmitting) return
+
+        viewModelScope.launch {
+            setDisputeSubmitting(true)
+
+            val compensation = form.requestedCompensationText.trim().toIntOrNull() ?: 0
+            val title = form.problemTitle.trim().ifBlank { "Спор по качеству выполнения" }
+
+            when (
+                val result = chatRepository.openDispute(
+                    threadId = threadId,
+                    problemTitle = title,
+                    problemDescription = description,
+                    requestedCompensationRub = compensation,
+                    desiredResolution = form.selectedResolution.rawValue,
+                )
+            ) {
+                is ApiResult.Success -> {
+                    onDisputeActionSuccess(result.value)
+                    _uiState.update { state ->
+                        state.copy(
+                            disputeState = state.disputeState.copy(
+                                isSubmitting = false,
+                                openForm = DisputeOpenFormState(),
+                            ),
+                        )
+                    }
+                    loadConversation(showLoader = false)
+                }
+
+                is ApiResult.Failure -> {
+                    _uiState.update { state ->
+                        state.copy(
+                            disputeState = state.disputeState.copy(
+                                isSubmitting = false,
+                                errorMessage = result.error.message,
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun showCounterpartyDisputeSheet() {
+        if (!_uiState.value.disputeState.canRespondAsCounterparty) return
+        _uiState.update { state ->
+            state.copy(
+                disputeState = state.disputeState.copy(
+                    counterpartyForm = state.disputeState.counterpartyForm.copy(
+                        isVisible = true,
+                        isAcceptMode = true,
+                    ),
+                    errorMessage = null,
+                    successMessage = null,
+                ),
+            )
+        }
+    }
+
+    fun dismissCounterpartyDisputeSheet() {
+        _uiState.update { state ->
+            state.copy(
+                disputeState = state.disputeState.copy(
+                    counterpartyForm = state.disputeState.counterpartyForm.copy(isVisible = false),
+                ),
+            )
+        }
+    }
+
+    fun updateCounterpartyAcceptMode(isAccept: Boolean) =
+        updateCounterpartyForm { it.copy(isAcceptMode = isAccept) }
+
+    fun updateCounterpartyResponse(value: String) =
+        updateCounterpartyForm { it.copy(responseDescription = value) }
+
+    fun updateCounterpartyRefundPercent(value: String) =
+        updateCounterpartyForm { it.copy(acceptableRefundPercentText = value.filter(Char::isDigit)) }
+
+    fun updateCounterpartyResolution(value: DisputeResolutionKind) =
+        updateCounterpartyForm { it.copy(selectedResolution = value) }
+
+    private inline fun updateCounterpartyForm(
+        block: (DisputeCounterpartyFormState) -> DisputeCounterpartyFormState,
+    ) {
+        _uiState.update { state ->
+            state.copy(
+                disputeState = state.disputeState.copy(
+                    counterpartyForm = block(state.disputeState.counterpartyForm),
+                ),
+            )
+        }
+    }
+
+    fun acceptCounterpartyTerms() {
+        val threadId = resolvedThreadId() ?: return
+        val dispute = _uiState.value.disputeState.activeDispute ?: return
+        if (_uiState.value.disputeState.isSubmitting) return
+
+        viewModelScope.launch {
+            setDisputeSubmitting(true)
+
+            when (
+                val result = chatRepository.acceptCounterpartyDispute(
+                    threadId = threadId,
+                    disputeId = dispute.id,
+                )
+            ) {
+                is ApiResult.Success -> {
+                    onDisputeActionSuccess(result.value)
+                    _uiState.update { state ->
+                        state.copy(
+                            disputeState = state.disputeState.copy(
+                                isSubmitting = false,
+                                counterpartyForm = DisputeCounterpartyFormState(),
+                            ),
+                        )
+                    }
+                    loadConversation(showLoader = false)
+                }
+
+                is ApiResult.Failure -> {
+                    _uiState.update { state ->
+                        state.copy(
+                            disputeState = state.disputeState.copy(
+                                isSubmitting = false,
+                                errorMessage = result.error.message,
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun submitCounterpartyResponse() {
+        val threadId = resolvedThreadId() ?: return
+        val dispute = _uiState.value.disputeState.activeDispute ?: return
+        val form = _uiState.value.disputeState.counterpartyForm
+        val description = form.responseDescription.trim()
+        if (description.isEmpty() || _uiState.value.disputeState.isSubmitting) return
+
+        val refundPercent = form.acceptableRefundPercentText.trim().toIntOrNull() ?: 50
+
+        viewModelScope.launch {
+            setDisputeSubmitting(true)
+
+            when (
+                val result = chatRepository.respondCounterpartyDispute(
+                    threadId = threadId,
+                    disputeId = dispute.id,
+                    responseDescription = description,
+                    acceptableRefundPercent = refundPercent,
+                    desiredResolution = form.selectedResolution.rawValue,
+                )
+            ) {
+                is ApiResult.Success -> {
+                    onDisputeActionSuccess(result.value)
+                    _uiState.update { state ->
+                        state.copy(
+                            disputeState = state.disputeState.copy(
+                                isSubmitting = false,
+                                counterpartyForm = DisputeCounterpartyFormState(),
+                            ),
+                        )
+                    }
+                    loadConversation(showLoader = false)
+                }
+
+                is ApiResult.Failure -> {
+                    _uiState.update { state ->
+                        state.copy(
+                            disputeState = state.disputeState.copy(
+                                isSubmitting = false,
+                                errorMessage = result.error.message,
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun showDisputeOptionDetail(optionId: String) {
+        _uiState.update { state ->
+            state.copy(
+                disputeState = state.disputeState.copy(
+                    optionDetail = DisputeOptionDetailState(
+                        isVisible = true,
+                        optionId = optionId,
+                    ),
+                ),
+            )
+        }
+    }
+
+    fun dismissDisputeOptionDetail() {
+        _uiState.update { state ->
+            state.copy(
+                disputeState = state.disputeState.copy(
+                    optionDetail = DisputeOptionDetailState(),
+                ),
+            )
+        }
+    }
+
+    fun confirmDisputeOption() {
+        val threadId = resolvedThreadId() ?: return
+        val dispute = _uiState.value.disputeState.activeDispute ?: return
+        val optionId = _uiState.value.disputeState.optionDetail.optionId ?: return
+        if (_uiState.value.disputeState.isSubmitting) return
+        if (!_uiState.value.disputeState.canVoteInCurrentRound) return
+
+        viewModelScope.launch {
+            setDisputeSubmitting(true)
+
+            when (
+                val result = chatRepository.selectDisputeOption(
+                    threadId = threadId,
+                    disputeId = dispute.id,
+                    optionId = optionId,
+                )
+            ) {
+                is ApiResult.Success -> {
+                    onDisputeActionSuccess(result.value)
+                    _uiState.update { state ->
+                        state.copy(
+                            disputeState = state.disputeState.copy(
+                                isSubmitting = false,
+                                optionDetail = DisputeOptionDetailState(),
+                            ),
+                        )
+                    }
+                    loadConversation(showLoader = false)
+                }
+
+                is ApiResult.Failure -> {
+                    _uiState.update { state ->
+                        state.copy(
+                            disputeState = state.disputeState.copy(
+                                isSubmitting = false,
+                                errorMessage = result.error.message,
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun dismissDisputeError() {
+        _uiState.update { state ->
+            state.copy(
+                disputeState = state.disputeState.copy(errorMessage = null),
+            )
+        }
+    }
+
+    private fun setDisputeSubmitting(value: Boolean) {
+        _uiState.update { state ->
+            state.copy(
+                disputeState = state.disputeState.copy(
+                    isSubmitting = value,
+                    errorMessage = if (value) null else state.disputeState.errorMessage,
+                ),
+            )
+        }
+    }
+
+    private fun onDisputeActionSuccess(dispute: DisputeState) {
+        _uiState.update { state ->
+            state.copy(
+                disputeState = state.disputeState.copy(activeDispute = dispute),
+            )
+        }
+    }
+
+    // endregion
 
     private fun loadReviewEligibility() {
         val announcementId = currentPreview?.announcementId

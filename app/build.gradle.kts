@@ -40,8 +40,8 @@ fun websocketFallbackFrom(apiBaseUrl: String): String = when {
     else -> apiBaseUrl
 }
 
-val debugApiBaseUrl = propertyOrEnv("vzaimno.apiBaseUrl.debug", "http://10.0.2.2:8000/")
-val releaseApiBaseUrl = propertyOrEnv("vzaimno.apiBaseUrl.release", "https://api.vzaimno.app/")
+val debugApiBaseUrl = propertyOrEnv("vzaimno.apiBaseUrl.debug", "https://api.vzaimno.net/")
+val releaseApiBaseUrl = propertyOrEnv("vzaimno.apiBaseUrl.release", "https://api.vzaimno.net/")
 val debugWebSocketBaseUrl = propertyOrEnv(
     "vzaimno.wsBaseUrl.debug",
     websocketFallbackFrom(debugApiBaseUrl)

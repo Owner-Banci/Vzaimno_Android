@@ -30,6 +30,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.outlined.Flag
+import androidx.compose.material.icons.outlined.ReportGmailerrorred
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
@@ -115,6 +116,24 @@ fun ChatThreadRoute(
         onReviewStarsChanged = viewModel::updateReviewStars,
         onReviewCommentChanged = viewModel::updateReviewComment,
         onSubmitReview = viewModel::submitReview,
+        onOpenDispute = viewModel::showOpenDisputeSheet,
+        onDismissOpenDispute = viewModel::dismissOpenDisputeSheet,
+        onOpenDisputeTitleChanged = viewModel::updateOpenDisputeTitle,
+        onOpenDisputeDescriptionChanged = viewModel::updateOpenDisputeDescription,
+        onOpenDisputeCompensationChanged = viewModel::updateOpenDisputeCompensation,
+        onOpenDisputeResolutionChanged = viewModel::updateOpenDisputeResolution,
+        onSubmitOpenDispute = viewModel::submitOpenDispute,
+        onRespondAsCounterparty = viewModel::showCounterpartyDisputeSheet,
+        onDismissCounterpartyDispute = viewModel::dismissCounterpartyDisputeSheet,
+        onCounterpartyAcceptModeChanged = viewModel::updateCounterpartyAcceptMode,
+        onCounterpartyResponseChanged = viewModel::updateCounterpartyResponse,
+        onCounterpartyRefundPercentChanged = viewModel::updateCounterpartyRefundPercent,
+        onCounterpartyResolutionChanged = viewModel::updateCounterpartyResolution,
+        onAcceptCounterpartyTerms = viewModel::acceptCounterpartyTerms,
+        onSubmitCounterpartyResponse = viewModel::submitCounterpartyResponse,
+        onShowDisputeOptionDetail = viewModel::showDisputeOptionDetail,
+        onDismissDisputeOptionDetail = viewModel::dismissDisputeOptionDetail,
+        onConfirmDisputeOption = viewModel::confirmDisputeOption,
     )
 }
 
@@ -137,6 +156,24 @@ private fun ChatThreadScreen(
     onReviewStarsChanged: (Int) -> Unit,
     onReviewCommentChanged: (String) -> Unit,
     onSubmitReview: () -> Unit,
+    onOpenDispute: () -> Unit,
+    onDismissOpenDispute: () -> Unit,
+    onOpenDisputeTitleChanged: (String) -> Unit,
+    onOpenDisputeDescriptionChanged: (String) -> Unit,
+    onOpenDisputeCompensationChanged: (String) -> Unit,
+    onOpenDisputeResolutionChanged: (DisputeResolutionKind) -> Unit,
+    onSubmitOpenDispute: () -> Unit,
+    onRespondAsCounterparty: () -> Unit,
+    onDismissCounterpartyDispute: () -> Unit,
+    onCounterpartyAcceptModeChanged: (Boolean) -> Unit,
+    onCounterpartyResponseChanged: (String) -> Unit,
+    onCounterpartyRefundPercentChanged: (String) -> Unit,
+    onCounterpartyResolutionChanged: (DisputeResolutionKind) -> Unit,
+    onAcceptCounterpartyTerms: () -> Unit,
+    onSubmitCounterpartyResponse: () -> Unit,
+    onShowDisputeOptionDetail: (String) -> Unit,
+    onDismissDisputeOptionDetail: () -> Unit,
+    onConfirmDisputeOption: () -> Unit,
 ) {
     HideShellBottomBarEffect(reason = "chat_thread")
 
@@ -201,6 +238,14 @@ private fun ChatThreadScreen(
                 },
                 actions = {
                     if (!state.messagesState.isInitialLoading) {
+                        if (state.canShowOpenDisputeAction) {
+                            IconButton(onClick = onOpenDispute) {
+                                Icon(
+                                    imageVector = Icons.Outlined.ReportGmailerrorred,
+                                    contentDescription = "Открыть спор",
+                                )
+                            }
+                        }
                         IconButton(
                             onClick = onOpenReport,
                         ) {
@@ -274,6 +319,23 @@ private fun ChatThreadScreen(
                                 )
                             }
 
+                            if (state.messagesState.kind != ChatConversationKind.Support &&
+                                (state.disputeState.hasActiveDispute ||
+                                    state.disputeState.shouldShowThinkingState ||
+                                    state.canShowOpenDisputeAction)
+                            ) {
+                                item {
+                                    DisputePanel(
+                                        state = state.disputeState,
+                                        onOpenDispute = onOpenDispute,
+                                        onRespondAsCounterparty = onRespondAsCounterparty,
+                                        onOptionSelected = onShowDisputeOptionDetail,
+                                        canOpenDispute = state.canShowOpenDisputeAction &&
+                                            !state.disputeState.hasActiveDispute,
+                                    )
+                                }
+                            }
+
                             if (messages.isEmpty()) {
                                 item {
                                     ConversationStatusCard(
@@ -294,7 +356,15 @@ private fun ChatThreadScreen(
                                         )
                                     }
 
-                                    MessageBubble(message = message)
+                                    val showTap = shouldShowCounterpartyTapTargetUi(
+                                        dispute = state.disputeState.activeDispute,
+                                        message = message,
+                                        canRespondAsCounterparty = state.disputeState.canRespondAsCounterparty,
+                                    )
+                                    MessageBubble(
+                                        message = message,
+                                        onSystemMessageTap = if (showTap) onRespondAsCounterparty else null,
+                                    )
                                 }
                             }
 
@@ -360,6 +430,39 @@ private fun ChatThreadScreen(
             onStarsChanged = onReviewStarsChanged,
             onCommentChanged = onReviewCommentChanged,
             onSubmit = onSubmitReview,
+        )
+    }
+
+    if (state.disputeState.openForm.isVisible) {
+        OpenDisputeBottomSheet(
+            state = state.disputeState,
+            onDismiss = onDismissOpenDispute,
+            onTitleChanged = onOpenDisputeTitleChanged,
+            onDescriptionChanged = onOpenDisputeDescriptionChanged,
+            onCompensationChanged = onOpenDisputeCompensationChanged,
+            onResolutionSelected = onOpenDisputeResolutionChanged,
+            onSubmit = onSubmitOpenDispute,
+        )
+    }
+
+    if (state.disputeState.counterpartyForm.isVisible) {
+        CounterpartyDisputeBottomSheet(
+            state = state.disputeState,
+            onDismiss = onDismissCounterpartyDispute,
+            onAcceptModeSelected = onCounterpartyAcceptModeChanged,
+            onResponseChanged = onCounterpartyResponseChanged,
+            onRefundPercentChanged = onCounterpartyRefundPercentChanged,
+            onResolutionSelected = onCounterpartyResolutionChanged,
+            onAccept = onAcceptCounterpartyTerms,
+            onSubmitCounter = onSubmitCounterpartyResponse,
+        )
+    }
+
+    if (state.disputeState.optionDetail.isVisible) {
+        DisputeOptionDetailBottomSheet(
+            state = state.disputeState,
+            onDismiss = onDismissDisputeOptionDetail,
+            onConfirm = onConfirmDisputeOption,
         )
     }
 }
@@ -491,6 +594,7 @@ private fun DateDivider(
 @Composable
 private fun MessageBubble(
     message: ChatMessageUi,
+    onSystemMessageTap: (() -> Unit)? = null,
 ) {
     val alignment = when {
         message.isSystem -> Alignment.CenterHorizontally
@@ -514,6 +618,11 @@ private fun MessageBubble(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Surface(
+            modifier = if (onSystemMessageTap != null) {
+                Modifier.clickable(onClick = onSystemMessageTap)
+            } else {
+                Modifier
+            },
             shape = RoundedCornerShape(
                 topStart = 24.dp,
                 topEnd = 24.dp,
@@ -539,6 +648,13 @@ private fun MessageBubble(
                     style = MaterialTheme.typography.labelMedium,
                     color = textColor.copy(alpha = 0.72f),
                 )
+                if (onSystemMessageTap != null) {
+                    Text(
+                        text = "Нажмите, чтобы ответить",
+                        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.tertiary,
+                    )
+                }
             }
         }
     }

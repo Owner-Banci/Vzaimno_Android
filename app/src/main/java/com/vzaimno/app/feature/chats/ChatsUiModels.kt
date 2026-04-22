@@ -2,6 +2,7 @@ package com.vzaimno.app.feature.chats
 
 import androidx.compose.runtime.Immutable
 import com.vzaimno.app.core.model.ChatThreadPreview
+import com.vzaimno.app.core.model.DisputeState
 import com.vzaimno.app.core.model.ReportReasonOption
 import com.vzaimno.app.core.model.ReviewEligibility
 
@@ -144,6 +145,84 @@ data class ChatTransportUiState(
     val isFallback: Boolean = true,
 )
 
+enum class DisputeResolutionKind(val rawValue: String, val title: String) {
+    PartialRefund("partial_refund", "Частичный возврат"),
+    FullRefund("full_refund", "Полный возврат"),
+    ReturnAndRefund("return_and_refund", "Возврат товара и средств"),
+    Redo("redo", "Переделать работу"),
+    WarningOnly("warning_only", "Только предупреждение"),
+    Other("other", "Другое"),
+    ;
+
+    companion object {
+        fun fromRaw(rawValue: String?): DisputeResolutionKind = values()
+            .firstOrNull { it.rawValue == rawValue?.trim()?.lowercase() }
+            ?: Other
+    }
+}
+
+@Immutable
+data class DisputeOpenFormState(
+    val isVisible: Boolean = false,
+    val problemTitle: String = "",
+    val problemDescription: String = "",
+    val requestedCompensationText: String = "",
+    val selectedResolution: DisputeResolutionKind = DisputeResolutionKind.PartialRefund,
+)
+
+@Immutable
+data class DisputeCounterpartyFormState(
+    val isVisible: Boolean = false,
+    val isAcceptMode: Boolean = false,
+    val responseDescription: String = "",
+    val acceptableRefundPercentText: String = "",
+    val selectedResolution: DisputeResolutionKind = DisputeResolutionKind.PartialRefund,
+)
+
+@Immutable
+data class DisputeOptionDetailState(
+    val isVisible: Boolean = false,
+    val optionId: String? = null,
+)
+
+@Immutable
+data class DisputeUiState(
+    val isLoading: Boolean = false,
+    val isSubmitting: Boolean = false,
+    val activeDispute: DisputeState? = null,
+    val errorMessage: String? = null,
+    val successMessage: String? = null,
+    val openForm: DisputeOpenFormState = DisputeOpenFormState(),
+    val counterpartyForm: DisputeCounterpartyFormState = DisputeCounterpartyFormState(),
+    val optionDetail: DisputeOptionDetailState = DisputeOptionDetailState(),
+) {
+    val hasActiveDispute: Boolean
+        get() = activeDispute != null
+
+    val shouldShowThinkingState: Boolean
+        get() = activeDispute?.isModelThinking == true
+
+    val canRespondAsCounterparty: Boolean
+        get() = activeDispute?.let { dispute ->
+            dispute.isWaitingCounterparty && dispute.viewerSide == "counterparty"
+        } ?: false
+
+    val canVoteInCurrentRound: Boolean
+        get() = activeDispute?.let { dispute ->
+            val role = dispute.viewerPartyRole
+            if (role != "customer" && role != "performer") return@let false
+            dispute.isWaitingRound1Votes || dispute.isWaitingRound2Votes
+        } ?: false
+
+    val canAnswerClarifications: Boolean
+        get() = activeDispute?.let { dispute ->
+            val role = dispute.viewerPartyRole ?: return@let false
+            dispute.isWaitingClarificationAnswers &&
+                dispute.requiredAnswerPartyRoles.contains(role) &&
+                dispute.questions.isNotEmpty()
+        } ?: false
+}
+
 @Immutable
 data class ChatThreadUiState(
     val messagesState: ChatMessagesState = ChatMessagesState(),
@@ -151,9 +230,17 @@ data class ChatThreadUiState(
     val reportState: ChatReportUiState = ChatReportUiState(),
     val reviewState: ChatReviewUiState = ChatReviewUiState(),
     val transportState: ChatTransportUiState = ChatTransportUiState(),
+    val disputeState: DisputeUiState = DisputeUiState(),
     val composerText: String = "",
     val isSending: Boolean = false,
 ) {
     val canSend: Boolean
         get() = composerText.trim().isNotEmpty() && !isSending && !messagesState.isInitialLoading
+
+    val canShowOpenDisputeAction: Boolean
+        get() {
+            if (messagesState.kind == ChatConversationKind.Support) return false
+            val dispute = disputeState.activeDispute ?: return true
+            return dispute.canOpenNewDispute
+        }
 }

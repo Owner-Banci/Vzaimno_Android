@@ -6,6 +6,10 @@ import com.vzaimno.app.data.remote.dto.AnnouncementOfferDto
 import com.vzaimno.app.data.remote.dto.AppealRequestDto
 import com.vzaimno.app.data.remote.dto.ChatMessageDto
 import com.vzaimno.app.data.remote.dto.ChatThreadPreviewDto
+import com.vzaimno.app.data.remote.dto.CounterpartyDisputeResponseRequestDto
+import com.vzaimno.app.data.remote.dto.DisputeStateDto
+import com.vzaimno.app.data.remote.dto.OpenDisputeRequestDto
+import com.vzaimno.app.data.remote.dto.SelectDisputeOptionRequestDto
 import com.vzaimno.app.data.remote.dto.CreateAnnouncementRequestDto
 import com.vzaimno.app.data.remote.dto.CreateOfferRequestDto
 import com.vzaimno.app.data.remote.dto.DeleteOkResponseDto
@@ -190,6 +194,38 @@ interface ChatApi {
         @Path("threadId") threadId: String,
         @Body request: SendChatMessageRequestDto,
     ): ChatMessageDto
+
+    @GET("chats/{threadId}/disputes/active")
+    suspend fun getActiveDispute(
+        @Path("threadId") threadId: String,
+    ): DisputeStateDto?
+
+    @POST("chats/{threadId}/disputes/open")
+    suspend fun openDispute(
+        @Path("threadId") threadId: String,
+        @Body request: OpenDisputeRequestDto,
+    ): DisputeStateDto
+
+    @POST("chats/{threadId}/disputes/{disputeId}/counterparty/accept")
+    suspend fun acceptCounterpartyDispute(
+        @Path("threadId") threadId: String,
+        @Path("disputeId") disputeId: String,
+        @Body body: EmptyBodyDto,
+    ): DisputeStateDto
+
+    @POST("chats/{threadId}/disputes/{disputeId}/counterparty/respond")
+    suspend fun respondCounterpartyDispute(
+        @Path("threadId") threadId: String,
+        @Path("disputeId") disputeId: String,
+        @Body request: CounterpartyDisputeResponseRequestDto,
+    ): DisputeStateDto
+
+    @POST("chats/{threadId}/disputes/{disputeId}/options/select")
+    suspend fun selectDisputeOption(
+        @Path("threadId") threadId: String,
+        @Path("disputeId") disputeId: String,
+        @Body request: SelectDisputeOptionRequestDto,
+    ): DisputeStateDto
 
     @GET("reports/reason-codes")
     suspend fun getReportReasonCodes(): List<ReportReasonOptionDto>
