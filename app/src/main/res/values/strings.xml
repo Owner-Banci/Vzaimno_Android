@@ -73,7 +73,7 @@
     <string name="ads_screen_subtitle">Следите за статусами, быстро возвращайтесь к деталям и держите под рукой всё, что требует вашего внимания.</string>
     <string name="ads_summary_title">Сводка</string>
     <string name="ads_filter_active">Активные</string>
-    <string name="ads_filter_actions">Ждут действий</string>
+    <string name="ads_filter_actions">Ждут</string>
     <string name="ads_filter_archive">Архив</string>
 
     <string name="ads_status_draft">Черновик</string>
@@ -108,8 +108,8 @@
     <string name="ads_status_description_disputed">По заданию нужен разбор ситуации, поэтому стоит проверить детали и сообщения.</string>
     <string name="ads_status_description_active">Объявление активно и доступно для откликов.</string>
 
-    <string name="ads_decision_technical_pending">Автоматическая проверка временно недоступна. Объявление ждёт дополнительной проверки.</string>
-    <string name="ads_decision_pending_review">На проверке: объявление отправлено на модерацию.</string>
+    <string name="ads_decision_technical_pending">Ждёт доп. проверки.</string>
+    <string name="ads_decision_pending_review">На модерации.</string>
 
     <string name="ads_category_delivery">Доставка и поручения</string>
     <string name="ads_category_help">Помощь</string>
@@ -118,13 +118,13 @@
     <string name="ads_inline_error_title">Не всё получилось обновить</string>
     <string name="ads_inline_error_dismiss">Скрыть</string>
     <string name="ads_empty_title">Здесь пока пусто</string>
-    <string name="ads_empty_message">Как только вы создадите первое объявление, оно появится в этом списке.</string>
-    <string name="ads_filter_empty_active_title">В активных пока пусто</string>
-    <string name="ads_filter_empty_active_message">Когда объявление пройдёт публикацию и станет рабочим, оно появится здесь.</string>
-    <string name="ads_filter_empty_actions_title">Сейчас ничего не ждёт вашего внимания</string>
-    <string name="ads_filter_empty_actions_message">Если объявление потребует правок, апелляции или проверки, вы увидите его в этом фильтре.</string>
+    <string name="ads_empty_message">Создайте первое объявление.</string>
+    <string name="ads_filter_empty_active_title">Активных нет</string>
+    <string name="ads_filter_empty_active_message">Опубликованные появятся здесь.</string>
+    <string name="ads_filter_empty_actions_title">Ничего не ждёт</string>
+    <string name="ads_filter_empty_actions_message">Правки и проверки будут здесь.</string>
     <string name="ads_filter_empty_archive_title">Архив пока пуст</string>
-    <string name="ads_filter_empty_archive_message">Завершённые, скрытые и удалённые объявления со временем будут собираться здесь.</string>
+    <string name="ads_filter_empty_archive_message">Завершённые и скрытые будут здесь.</string>
 
     <string name="ads_archive_action">В архив</string>
     <string name="ads_delete_action">Удалить</string>
@@ -139,6 +139,7 @@
     <string name="ads_delete_dialog_message">Объявление «%1$s» будет удалено из ваших активных сценариев и списка.</string>
     <string name="ads_delete_confirm">Удалить</string>
     <string name="ads_delete_in_progress">Удаляем объявление и обновляем список…</string>
+    <string name="ads_delete_in_progress_short">Удаляем</string>
 
     <string name="ads_item_menu">Действия с объявлением</string>
     <string name="ads_no_photo_chip">Без фото</string>
@@ -337,8 +338,8 @@
     <string name="discovery_message_dismiss">Скрыть</string>
     <string name="discovery_refresh">Обновить выдачу</string>
     <string name="discovery_empty_title">Ничего не найдено</string>
-    <string name="discovery_empty_message">Попробуйте смягчить фильтры, изменить запрос или переключиться на карту.</string>
-    <string name="discovery_empty_map_message">По текущим условиям нашлись объявления, но у них пока нет точки для отображения на карте.</string>
+    <string name="discovery_empty_message">Измените запрос или откройте карту.</string>
+    <string name="discovery_empty_map_message">У найденных объявлений пока нет точки на карте.</string>
     <string name="discovery_map_unavailable_title">Карта пока недоступна</string>
     <string name="discovery_map_unavailable_message">Список объявлений уже работает. Карту можно включить после подключения Yandex MapKit API key в локальной конфигурации.</string>
 

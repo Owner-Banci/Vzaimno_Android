@@ -20,8 +20,9 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.vzaimno.app.core.map.YandexMapKitLifecycle
+import com.vzaimno.app.core.map.createMovableYandexMapView
 import com.yandex.mapkit.Animation
-import com.yandex.mapkit.MapKitFactory
 import com.yandex.mapkit.geometry.BoundingBox
 import com.yandex.mapkit.geometry.Geometry
 import com.yandex.mapkit.geometry.Point
@@ -49,35 +50,27 @@ internal fun MapCanvas(
     val currentOnMapLoaded by rememberUpdatedState(onMapLoaded)
 
     val mapView = remember {
-        MapView(context).apply {
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT,
-            )
-        }
+        createMovableYandexMapView(context)
     }
 
     DisposableEffect(lifecycleOwner) {
         val lifecycle = lifecycleOwner.lifecycle
         // If already started, immediately start MapKit and MapView
         if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-            MapKitFactory.getInstance().onStart()
-            mapView.onStart()
+            YandexMapKitLifecycle.start(mapView)
         }
 
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_START -> {
-                    MapKitFactory.getInstance().onStart()
-                    mapView.onStart()
+                    YandexMapKitLifecycle.start(mapView)
                 }
                 Lifecycle.Event.ON_STOP -> {
-                    mapView.onStop()
-                    MapKitFactory.getInstance().onStop()
+                    YandexMapKitLifecycle.stop(mapView)
                 }
                 Lifecycle.Event.ON_RESUME -> {
                     // Force invalidate to fix partial tile rendering after tab switches
-                    mapView.post { mapView.invalidate() }
+                    YandexMapKitLifecycle.refreshSurface(mapView)
                 }
                 else -> Unit
             }
@@ -87,7 +80,7 @@ internal fun MapCanvas(
             lifecycle.removeObserver(observer)
             // Ensure we stop when composable leaves composition
             if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-                mapView.onStop()
+                YandexMapKitLifecycle.stop(mapView)
             }
         }
     }
@@ -236,10 +229,7 @@ internal fun MapCanvas(
             // Force relayout after recomposition to prevent partial tile rendering.
             // MapView uses a GL surface that can get clipped if the container resizes
             // without the view being re-laid-out.
-            view.post {
-                view.requestLayout()
-                view.invalidate()
-            }
+            YandexMapKitLifecycle.refreshSurface(view)
         },
         modifier = modifier,
     )

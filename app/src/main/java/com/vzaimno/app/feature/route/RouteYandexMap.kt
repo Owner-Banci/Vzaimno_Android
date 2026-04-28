@@ -16,17 +16,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.vzaimno.app.core.map.YandexMapKitLifecycle
+import com.vzaimno.app.core.map.createMovableYandexMapView
 import com.yandex.mapkit.Animation
-import com.yandex.mapkit.MapKitFactory
 import com.yandex.mapkit.geometry.BoundingBox
 import com.yandex.mapkit.geometry.Geometry
 import com.yandex.mapkit.geometry.Point
 import com.yandex.mapkit.geometry.Polyline as YandexPolyline
+import com.yandex.mapkit.map.CameraListener
 import com.yandex.mapkit.map.CameraPosition
 import com.yandex.mapkit.map.MapObjectCollection
 import com.yandex.mapkit.map.MapObjectTapListener
@@ -46,7 +50,7 @@ internal fun RouteYandexMap(
     val markerIconCache = remember { mutableMapOf<String, ImageProvider>() }
 
     val containerAndMapView = remember {
-        val mapView = MapView(context)
+        val mapView = createMovableYandexMapView(context)
         val container = FrameLayout(context).apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -67,36 +71,68 @@ internal fun RouteYandexMap(
 
     var isMapReady by remember { mutableStateOf(false) }
     var isMapStarted by remember { mutableStateOf(false) }
+    var mapContainerSize by remember { mutableStateOf(IntSize.Zero) }
 
     DisposableEffect(lifecycleOwner) {
         val lifecycle = lifecycleOwner.lifecycle
+        var disposed = false
+        var cameraListenerAttached = false
+        val cameraRefreshListener = CameraListener { _, _, _, finished ->
+            if (finished) {
+                YandexMapKitLifecycle.refreshSurface(mapView, resyncCamera = false)
+            }
+        }
 
-        val layoutListener = object : ViewTreeObserver.OnGlobalLayoutListener {
+        fun initializeMapObjectsIfNeeded() {
+            if (mapCollections.markerCollection != null) return
+
+            val rootCollection = mapView.mapWindow.map.mapObjects
+            mapCollections.polylineCollection = rootCollection.addCollection()
+            mapCollections.markerCollection = rootCollection.addCollection()
+
+            mapView.mapWindow.map.move(
+                CameraPosition(
+                    Point(55.751244, 37.618423),
+                    11.2f,
+                    0f,
+                    0f,
+                ),
+                Animation(Animation.Type.SMOOTH, 0.3f),
+                null,
+            )
+        }
+
+        fun attachCameraRefreshListenerIfNeeded() {
+            if (cameraListenerAttached) return
+            mapView.mapWindow.map.addCameraListener(cameraRefreshListener)
+            cameraListenerAttached = true
+        }
+
+        fun refreshMapSurface() {
+            YandexMapKitLifecycle.refreshSurface(mapView)
+        }
+
+        fun startMapIfPossible(): Boolean {
+            if (disposed) return false
+            if (isMapStarted) return true
+            if (!lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) return false
+            if (mapView.width <= 0 || mapView.height <= 0) return false
+
+            YandexMapKitLifecycle.start(mapView)
+            isMapStarted = true
+            initializeMapObjectsIfNeeded()
+            attachCameraRefreshListenerIfNeeded()
+            isMapReady = true
+            refreshMapSurface()
+            return true
+        }
+
+        lateinit var layoutListener: ViewTreeObserver.OnGlobalLayoutListener
+        layoutListener = object : ViewTreeObserver.OnGlobalLayoutListener {
             override fun onGlobalLayout() {
-                if (mapView.width <= 0 || mapView.height <= 0 || isMapStarted) return
-
-                mapView.viewTreeObserver.removeOnGlobalLayoutListener(this)
-                if (!lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) return
-
-                MapKitFactory.getInstance().onStart()
-                mapView.onStart()
-                isMapStarted = true
-
-                val rootCollection = mapView.mapWindow.map.mapObjects
-                mapCollections.polylineCollection = rootCollection.addCollection()
-                mapCollections.markerCollection = rootCollection.addCollection()
-
-                mapView.mapWindow.map.move(
-                    CameraPosition(
-                        Point(55.751244, 37.618423),
-                        11.2f,
-                        0f,
-                        0f,
-                    ),
-                    Animation(Animation.Type.SMOOTH, 0.3f),
-                    null,
-                )
-                isMapReady = true
+                if (startMapIfPossible()) {
+                    mapView.viewTreeObserver.removeOnGlobalLayoutListener(this)
+                }
             }
         }
         mapView.viewTreeObserver.addOnGlobalLayoutListener(layoutListener)
@@ -104,16 +140,16 @@ internal fun RouteYandexMap(
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_START -> {
-                    if (isMapStarted) {
-                        MapKitFactory.getInstance().onStart()
-                        mapView.onStart()
+                    if (startMapIfPossible()) {
+                        mapView.viewTreeObserver.removeOnGlobalLayoutListener(layoutListener)
                     }
                 }
 
                 Lifecycle.Event.ON_STOP -> {
                     if (isMapStarted) {
-                        mapView.onStop()
-                        MapKitFactory.getInstance().onStop()
+                        isMapReady = false
+                        YandexMapKitLifecycle.stop(mapView)
+                        isMapStarted = false
                     }
                 }
 
@@ -121,13 +157,24 @@ internal fun RouteYandexMap(
             }
         }
         lifecycle.addObserver(observer)
+        mapView.post {
+            if (startMapIfPossible()) {
+                mapView.viewTreeObserver.removeOnGlobalLayoutListener(layoutListener)
+            }
+        }
 
         onDispose {
+            disposed = true
             mapView.viewTreeObserver.removeOnGlobalLayoutListener(layoutListener)
             lifecycle.removeObserver(observer)
-            if (isMapStarted && lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-                mapView.onStop()
-                MapKitFactory.getInstance().onStop()
+            if (cameraListenerAttached) {
+                runCatching { mapView.mapWindow.map.removeCameraListener(cameraRefreshListener) }
+                cameraListenerAttached = false
+            }
+            if (isMapStarted) {
+                isMapReady = false
+                YandexMapKitLifecycle.stop(mapView)
+                isMapStarted = false
             }
         }
     }
@@ -246,14 +293,21 @@ internal fun RouteYandexMap(
         }
     }
 
+    LaunchedEffect(isMapReady, mapContainerSize) {
+        if (!isMapReady || mapContainerSize == IntSize.Zero) return@LaunchedEffect
+        YandexMapKitLifecycle.refreshSurface(mapView)
+    }
+
     AndroidView(
         factory = { container },
-        modifier = modifier,
-        update = { view ->
-            view.post {
-                view.requestLayout()
-                view.invalidate()
+        modifier = modifier.onSizeChanged { size ->
+            if (size.width > 0 && size.height > 0 && size != mapContainerSize) {
+                mapContainerSize = size
             }
+        },
+        update = { view ->
+            YandexMapKitLifecycle.refreshSurface(mapView)
+            view.invalidate()
         },
     )
 }

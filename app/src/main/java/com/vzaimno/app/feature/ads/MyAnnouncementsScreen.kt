@@ -1,6 +1,6 @@
 package com.vzaimno.app.feature.ads
 
-import android.text.format.DateUtils
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -10,11 +10,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -28,31 +26,26 @@ import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.ErrorOutline
-import androidx.compose.material.icons.outlined.ImageNotSupported
 import androidx.compose.material.icons.outlined.Inventory2
-import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material.icons.outlined.PhotoCameraBack
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.AlertDialog
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -68,6 +61,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -76,9 +70,9 @@ import com.vzaimno.app.R
 import com.vzaimno.app.core.designsystem.theme.spacing
 import com.vzaimno.app.core.model.Announcement
 import com.vzaimno.app.core.model.formattedBudgetText
-import com.vzaimno.app.core.model.hasAttachedMedia
 import com.vzaimno.app.core.model.offersCount
 import com.vzaimno.app.core.model.previewImageUrl
+import java.time.Duration
 import java.time.Instant
 
 @Composable
@@ -373,40 +367,30 @@ private fun MyAnnouncementsScreen(
 private fun AdsSummaryCard(summary: AdsSummaryUi) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = 1.dp,
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        Row(
+            modifier = Modifier.padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text(
-                text = stringResource(R.string.ads_summary_title),
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            AdsStatTile(
+                modifier = Modifier.weight(1f),
+                title = stringResource(R.string.ads_filter_active),
+                value = summary.activeCount,
+                accent = true,
             )
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                AdsStatTile(
-                    modifier = Modifier.weight(1f),
-                    title = stringResource(R.string.ads_filter_active),
-                    value = summary.activeCount,
-                    accent = true,
-                )
-                AdsStatTile(
-                    modifier = Modifier.weight(1f),
-                    title = stringResource(R.string.ads_filter_actions),
-                    value = summary.actionsCount,
-                )
-                AdsStatTile(
-                    modifier = Modifier.weight(1f),
-                    title = stringResource(R.string.ads_filter_archive),
-                    value = summary.archiveCount,
-                )
-            }
+            AdsStatTile(
+                modifier = Modifier.weight(1f),
+                title = stringResource(R.string.ads_filter_actions),
+                value = summary.actionsCount,
+            )
+            AdsStatTile(
+                modifier = Modifier.weight(1f),
+                title = stringResource(R.string.ads_filter_archive),
+                value = summary.archiveCount,
+            )
         }
     }
 }
@@ -419,8 +403,8 @@ private fun AdsStatTile(
     accent: Boolean = false,
 ) {
     Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
+        modifier = modifier.height(72.dp),
+        shape = RoundedCornerShape(12.dp),
         color = if (accent) {
             MaterialTheme.colorScheme.primaryContainer
         } else {
@@ -428,9 +412,11 @@ private fun AdsStatTile(
         },
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 14.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 10.dp, vertical = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.Center,
         ) {
             Text(
                 text = title,
@@ -440,11 +426,14 @@ private fun AdsStatTile(
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = value.toString(),
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(top = 3.dp),
             )
         }
     }
@@ -497,225 +486,274 @@ private fun AnnouncementListCard(
     onArchive: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    val status = announcement.statusPresentation()
-    val decisionSummary = announcementDecisionSummaryText(announcement)
-    var menuExpanded by remember { mutableStateOf(false) }
+    val hasSwipeActions = announcement.canArchiveFromAds() || announcement.canDeleteFromAds()
+    val dismissState = rememberSwipeToDismissBoxState(
+        confirmValueChange = { value ->
+            value != SwipeToDismissBoxValue.StartToEnd
+        },
+    )
 
+    if (hasSwipeActions) {
+        SwipeToDismissBox(
+            state = dismissState,
+            enableDismissFromStartToEnd = false,
+            enableDismissFromEndToStart = !isMutating,
+            backgroundContent = {
+                AnnouncementSwipeActions(
+                    announcement = announcement,
+                    isMutating = isMutating,
+                    mutationType = mutationType,
+                    onArchive = onArchive,
+                    onDelete = onDelete,
+                )
+            },
+        ) {
+            AnnouncementCardBody(
+                announcement = announcement,
+                apiBaseUrl = apiBaseUrl,
+                isMutating = isMutating,
+                mutationType = mutationType,
+                onClick = onClick,
+            )
+        }
+    } else {
+        AnnouncementCardBody(
+            announcement = announcement,
+            apiBaseUrl = apiBaseUrl,
+            isMutating = isMutating,
+            mutationType = mutationType,
+            onClick = onClick,
+        )
+    }
+}
+
+@Composable
+private fun AnnouncementSwipeActions(
+    announcement: Announcement,
+    isMutating: Boolean,
+    mutationType: AnnouncementMutationType?,
+    onArchive: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .padding(horizontal = 12.dp),
+        horizontalArrangement = Arrangement.End,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (announcement.canArchiveFromAds()) {
+            SwipeActionButton(
+                label = stringResource(R.string.ads_archive_action),
+                icon = Icons.Outlined.Archive,
+                enabled = !isMutating,
+                onClick = onArchive,
+            )
+        }
+        if (announcement.canDeleteFromAds()) {
+            SwipeActionButton(
+                label = if (isMutating && mutationType == AnnouncementMutationType.Delete) {
+                    stringResource(R.string.ads_delete_in_progress_short)
+                } else {
+                    stringResource(R.string.ads_delete_action)
+                },
+                icon = Icons.Outlined.DeleteOutline,
+                enabled = !isMutating,
+                onClick = onDelete,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SwipeActionButton(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .padding(start = 8.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(enabled = enabled, onClick = onClick),
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(17.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AnnouncementCardBody(
+    announcement: Announcement,
+    apiBaseUrl: String,
+    isMutating: Boolean,
+    mutationType: AnnouncementMutationType?,
+    onClick: () -> Unit,
+) {
+    val imageUrl = announcement.previewImageUrl(apiBaseUrl)
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(20.dp))
             .clickable(enabled = !isMutating, onClick = onClick),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surface,
         shadowElevation = 1.dp,
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            AnnouncementPreview(
-                modifier = Modifier.size(96.dp),
-                announcement = announcement,
-                apiBaseUrl = apiBaseUrl,
-            )
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-                    verticalAlignment = Alignment.Top,
-                ) {
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Text(
-                            text = announcement.title,
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            text = announcementCategoryLabel(announcement),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-
-                    Column(
-                        horizontalAlignment = Alignment.End,
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        AnnouncementStatusBadge(presentation = status)
-
-                        Box {
-                            IconButton(
-                                enabled = !isMutating,
-                                onClick = { menuExpanded = true },
-                            ) {
-                                if (isMutating) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(20.dp),
-                                        strokeWidth = 2.dp,
-                                    )
-                                } else {
-                                    Icon(
-                                        imageVector = Icons.Outlined.MoreVert,
-                                        contentDescription = stringResource(R.string.ads_item_menu),
-                                    )
-                                }
-                            }
-
-                            DropdownMenu(
-                                expanded = menuExpanded,
-                                onDismissRequest = { menuExpanded = false },
-                            ) {
-                                if (announcement.canArchiveFromAds()) {
-                                    DropdownMenuItem(
-                                        text = {
-                                            Text(text = stringResource(R.string.ads_archive_action))
-                                        },
-                                        leadingIcon = {
-                                            Icon(
-                                                imageVector = Icons.Outlined.Archive,
-                                                contentDescription = null,
-                                            )
-                                        },
-                                        onClick = {
-                                            menuExpanded = false
-                                            onArchive()
-                                        },
-                                    )
-                                }
-
-                                if (announcement.canDeleteFromAds()) {
-                                    DropdownMenuItem(
-                                        text = {
-                                            Text(text = stringResource(R.string.ads_delete_action))
-                                        },
-                                        leadingIcon = {
-                                            Icon(
-                                                imageVector = Icons.Outlined.DeleteOutline,
-                                                contentDescription = null,
-                                            )
-                                        },
-                                        onClick = {
-                                            menuExpanded = false
-                                            onDelete()
-                                        },
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-                ) {
-                    announcement.formattedBudgetText?.let { budgetText ->
-                        AnnouncementInfoChip(
-                            label = budgetText,
-                            leadingIcon = Icons.Outlined.Inventory2,
-                        )
-                    }
-                    if (!announcement.hasAttachedMedia) {
-                        AnnouncementInfoChip(
-                            label = stringResource(R.string.ads_no_photo_chip),
-                            leadingIcon = Icons.Outlined.ImageNotSupported,
-                        )
-                    }
-                }
-
-                decisionSummary?.let { summary ->
-                    Text(
-                        text = summary,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    announcement.createdAtOrEpochFallback()?.let { createdAt ->
-                        Text(
-                            text = createdAt.asRelativeTimeLabel(),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-
-                    if (announcement.shouldShowOffersCount()) {
-                        Text(
-                            text = stringResource(R.string.ads_offers_count, announcement.offersCount),
-                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                    }
-                }
-
-                if (mutationType == AnnouncementMutationType.Delete && isMutating) {
-                    HorizontalDivider(
-                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.14f),
-                    )
-                    Text(
-                        text = stringResource(R.string.ads_delete_in_progress),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+            imageUrl?.let { url ->
+                AnnouncementPreview(
+                    modifier = Modifier.size(88.dp),
+                    imageUrl = url,
+                )
             }
+
+            AnnouncementCardContent(
+                modifier = Modifier.weight(1f),
+                announcement = announcement,
+                isMutating = isMutating,
+                mutationType = mutationType,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AnnouncementCardContent(
+    announcement: Announcement,
+    isMutating: Boolean,
+    mutationType: AnnouncementMutationType?,
+    modifier: Modifier = Modifier,
+) {
+    val status = announcement.statusPresentation()
+    val decisionSummary = announcementListDecisionSummaryText(announcement)
+    val budgetText = announcement.formattedBudgetText
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(7.dp),
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+            verticalAlignment = Alignment.Top,
+        ) {
+            Text(
+                modifier = Modifier.weight(1f),
+                text = announcement.title,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            AnnouncementStatusBadge(presentation = status)
+        }
+
+        if (budgetText != null) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+            ) {
+                AnnouncementInfoChip(
+                    label = budgetText,
+                    leadingIcon = Icons.Outlined.Inventory2,
+                )
+            }
+        }
+
+        decisionSummary?.let { summary ->
+            Text(
+                text = summary,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            announcement.createdAtOrEpochFallback()?.let { createdAt ->
+                Text(
+                    text = createdAt.asRelativeTimeLabel(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
+            if (announcement.shouldShowOffersCount()) {
+                Text(
+                    text = stringResource(R.string.ads_offers_count, announcement.offersCount),
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
+
+        if (mutationType == AnnouncementMutationType.Delete && isMutating) {
+            HorizontalDivider(
+                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.14f),
+            )
+            Text(
+                text = stringResource(R.string.ads_delete_in_progress),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
 
 @Composable
 private fun AnnouncementPreview(
-    announcement: Announcement,
-    apiBaseUrl: String,
+    imageUrl: String,
     modifier: Modifier = Modifier,
 ) {
-    val imageUrl = announcement.previewImageUrl(apiBaseUrl)
+    AsyncImage(
+        modifier = modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)),
+        model = imageUrl,
+        contentDescription = stringResource(R.string.ads_image_preview_description),
+        contentScale = ContentScale.Crop,
+    )
+}
 
-    if (imageUrl != null) {
-        AsyncImage(
-            modifier = modifier
-                .clip(RoundedCornerShape(24.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)),
-            model = imageUrl,
-            contentDescription = stringResource(R.string.ads_image_preview_description),
-            contentScale = ContentScale.Crop,
-        )
-    } else {
-        Box(
-            modifier = modifier
-                .clip(RoundedCornerShape(24.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.PhotoCameraBack,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = stringResource(R.string.ads_no_photo_chip),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
+@Composable
+private fun announcementListDecisionSummaryText(announcement: Announcement): String? {
+    val summary = announcementDecisionSummaryText(announcement)?.trim().orEmpty()
+    if (summary.isBlank()) return null
+    val normalized = summary.lowercase()
+    return summary.takeUnless {
+        normalized.contains("одобрен") && normalized.contains("отображ")
     }
 }
 
@@ -734,13 +772,16 @@ private fun AnnouncementStatusBadge(
 
     Surface(
         shape = RoundedCornerShape(999.dp),
-        color = containerColor,
+        color = Color.Transparent,
+        border = BorderStroke(1.dp, containerColor.copy(alpha = 0.72f)),
     ) {
         Text(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
             text = stringResource(presentation.labelRes),
-            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-            color = Color.White,
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+            color = containerColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -771,8 +812,10 @@ private fun AnnouncementInfoChip(
             }
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -1003,9 +1046,33 @@ private fun CreateAnnouncementEntryCard(
     }
 }
 
-private fun Instant.asRelativeTimeLabel(): String = DateUtils.getRelativeTimeSpanString(
-    toEpochMilli(),
-    System.currentTimeMillis(),
-    DateUtils.MINUTE_IN_MILLIS,
-    DateUtils.FORMAT_ABBREV_RELATIVE,
-).toString()
+private fun Instant.asRelativeTimeLabel(): String {
+    val duration = Duration.between(this, Instant.now())
+    if (duration.seconds < 60) return "только что"
+
+    val minutes = duration.toMinutes()
+    if (minutes < 60) return "${minutes} ${russianPlural(minutes, "минуту", "минуты", "минут")} назад"
+
+    val hours = duration.toHours()
+    if (hours < 24) return "${hours} ${russianPlural(hours, "час", "часа", "часов")} назад"
+
+    val days = duration.toDays()
+    if (days < 30) return "${days} ${russianPlural(days, "день", "дня", "дней")} назад"
+
+    val months = days / 30
+    if (months < 12) return "${months} ${russianPlural(months, "месяц", "месяца", "месяцев")} назад"
+
+    val years = days / 365
+    return "${years} ${russianPlural(years, "год", "года", "лет")} назад"
+}
+
+private fun russianPlural(value: Long, one: String, few: String, many: String): String {
+    val mod100 = value % 100
+    if (mod100 in 11..14) return many
+
+    return when (value % 10) {
+        1L -> one
+        2L, 3L, 4L -> few
+        else -> many
+    }
+}

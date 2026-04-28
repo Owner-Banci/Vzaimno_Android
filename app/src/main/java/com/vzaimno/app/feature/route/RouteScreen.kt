@@ -34,12 +34,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.AltRoute
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.outlined.AddRoad
-import androidx.compose.material.icons.outlined.AltRoute
 import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Map
@@ -128,6 +128,7 @@ fun RouteHomeRoute(
         onAdvanceTaskStage = viewModel::advanceTaskStage,
         onAcceptPreviewTask = viewModel::acceptPreviewTask,
         onRemoveAcceptedTask = viewModel::removeAcceptedTask,
+        onRouteRadiusSelected = viewModel::updatePerformerRouteRadius,
         onOpenAnnouncementDetails = onOpenAnnouncementDetails,
         onMapZoomIn = viewModel::zoomMapIn,
         onMapZoomOut = viewModel::zoomMapOut,
@@ -155,6 +156,7 @@ private fun RouteScreen(
     onAdvanceTaskStage: (String) -> Unit,
     onAcceptPreviewTask: (String) -> Unit,
     onRemoveAcceptedTask: (String) -> Unit,
+    onRouteRadiusSelected: (Int) -> Unit,
     onOpenAnnouncementDetails: (String) -> Unit,
     onMapZoomIn: () -> Unit,
     onMapZoomOut: () -> Unit,
@@ -234,6 +236,19 @@ private fun RouteScreen(
                 if (activeMetrics.isNotEmpty()) {
                     item {
                         RouteMetricsRow(metrics = activeMetrics)
+                    }
+                }
+
+                if (activeRole == RouteRole.Performer &&
+                    performerState.status == RouteRoleContentStatus.Content
+                ) {
+                    item {
+                        RouteRadiusSelector(
+                            radiusMeters = performerState.radiusMeters,
+                            optionsMeters = performerState.radiusOptionsMeters,
+                            enabled = !state.actions.rebuildingRoute,
+                            onSelected = onRouteRadiusSelected,
+                        )
                     }
                 }
 
@@ -732,6 +747,88 @@ private fun RouteMetricsRow(metrics: List<RouteMetricUi>) {
             }
         }
     }
+}
+
+@Composable
+private fun RouteRadiusSelector(
+    radiusMeters: Int,
+    optionsMeters: List<Int>,
+    enabled: Boolean,
+    onSelected: (Int) -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 1.dp,
+    ) {
+        Column(
+            modifier = Modifier.padding(MaterialTheme.spacing.large),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.AltRoute,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                )
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text(
+                        text = "Задачи по пути",
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = "Показывать задания на расстоянии от маршрута",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+            ) {
+                optionsMeters.forEach { option ->
+                    val selected = option == radiusMeters
+                    Surface(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(999.dp))
+                            .clickable(enabled = enabled) { onSelected(option) },
+                        shape = RoundedCornerShape(999.dp),
+                        color = if (selected) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+                        },
+                    ) {
+                        Text(
+                            text = "до ${formatRadiusOption(option)}",
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                            color = if (selected) {
+                                MaterialTheme.colorScheme.onPrimary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun formatRadiusOption(radiusMeters: Int): String = if (radiusMeters >= 1000) {
+    "${radiusMeters / 1000} км"
+} else {
+    "$radiusMeters м"
 }
 
 @Composable
@@ -1340,7 +1437,7 @@ private fun RouteCenterStatusCard(
                 ) {
                     Icon(
                         modifier = Modifier.padding(12.dp),
-                        imageVector = Icons.Outlined.AltRoute,
+                        imageVector = Icons.AutoMirrored.Outlined.AltRoute,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                     )

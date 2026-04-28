@@ -148,6 +148,8 @@ data class PerformerRouteUiState(
     val metrics: List<RouteMetricUi> = emptyList(),
     val activeTasks: List<RouteTaskCardUi> = emptyList(),
     val previewTasks: List<RouteTaskCardUi> = emptyList(),
+    val radiusMeters: Int = 500,
+    val radiusOptionsMeters: List<Int> = listOf(500, 1000, 1500, 2000),
     val nextStep: RouteNextStepUi? = null,
     val emptyTitle: String = "",
     val emptyMessage: String = "",

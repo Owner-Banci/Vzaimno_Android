@@ -140,16 +140,8 @@ fun buildApproximateRoute(
         )
     }
 
-    var distanceMeters = 0.0
-    for (index in 0 until ordered.lastIndex) {
-        distanceMeters += haversineDistanceMeters(
-            start = ordered[index],
-            end = ordered[index + 1],
-        )
-    }
-
-    val speedMetersPerSecond = if (travelMode == RouteTravelMode.Walking) 1.35 else 8.5
-    val durationSeconds = maxOf(1, (distanceMeters / speedMetersPerSecond).roundToInt())
+    val distanceMeters = routePolylineLengthMeters(ordered)
+    val durationSeconds = estimateRouteDurationSeconds(distanceMeters, travelMode)
 
     return ApproximateRoutePlan(
         polyline = ordered,
@@ -157,6 +149,41 @@ fun buildApproximateRoute(
         durationSeconds = durationSeconds,
         quality = RouteMapGeometryQuality.Approximate,
     )
+}
+
+fun routePlanFromPolyline(
+    polyline: List<GeoPoint>,
+    travelMode: RouteTravelMode,
+    quality: RouteMapGeometryQuality,
+): ApproximateRoutePlan {
+    val distanceMeters = routePolylineLengthMeters(polyline)
+    return ApproximateRoutePlan(
+        polyline = polyline,
+        distanceMeters = distanceMeters.roundToInt(),
+        durationSeconds = estimateRouteDurationSeconds(distanceMeters, travelMode),
+        quality = quality,
+    )
+}
+
+fun routePolylineLengthMeters(polyline: List<GeoPoint>): Double {
+    if (polyline.size < 2) return 0.0
+
+    var distanceMeters = 0.0
+    for (index in 0 until polyline.lastIndex) {
+        distanceMeters += haversineDistanceMeters(
+            start = polyline[index],
+            end = polyline[index + 1],
+        )
+    }
+    return distanceMeters
+}
+
+fun estimateRouteDurationSeconds(
+    distanceMeters: Double,
+    travelMode: RouteTravelMode,
+): Int {
+    val speedMetersPerSecond = if (travelMode == RouteTravelMode.Walking) 1.35 else 8.5
+    return maxOf(1, (distanceMeters / speedMetersPerSecond).roundToInt())
 }
 
 fun orderedAcceptedTasks(

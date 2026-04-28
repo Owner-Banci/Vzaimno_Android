@@ -49,20 +49,15 @@ import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.CheckCircle
-import androidx.compose.material.icons.outlined.FilterAlt
-import androidx.compose.material.icons.outlined.ImageNotSupported
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.NearMe
 import androidx.compose.material.icons.outlined.PanTool
-import androidx.compose.material.icons.outlined.PhotoCameraBack
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Send
-import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -97,12 +92,14 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -126,16 +123,16 @@ import com.vzaimno.app.core.model.primaryDestinationAddress
 import com.vzaimno.app.core.model.primarySourceAddress
 import com.vzaimno.app.core.model.quickOfferPrice
 import com.vzaimno.app.core.model.structuredData
+import com.vzaimno.app.core.map.YandexMapKitLifecycle
+import com.vzaimno.app.core.map.createMovableYandexMapView
 import com.vzaimno.app.core.model.taskStringValue
 import java.time.Instant
 import java.time.ZoneId
 import com.yandex.mapkit.Animation
-import com.yandex.mapkit.MapKitFactory
 import com.yandex.mapkit.geometry.Point
 import com.yandex.mapkit.geometry.Polyline
+import com.yandex.mapkit.map.CameraListener
 import com.yandex.mapkit.map.CameraPosition
-import com.yandex.mapkit.map.InputListener
-import com.yandex.mapkit.map.Map
 import com.yandex.mapkit.map.MapObjectCollection
 import com.yandex.mapkit.map.MapObjectTapListener
 import com.yandex.mapkit.mapview.MapView
@@ -286,7 +283,7 @@ private fun AnnouncementDiscoveryScreen(
                     )
                 }
 
-                // Top overlay: Search bar + filter button
+                // Top overlay: search bar + list button
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -302,7 +299,6 @@ private fun AnnouncementDiscoveryScreen(
                         ),
                     verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
                 ) {
-                    // Search bar row
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
                         verticalAlignment = Alignment.CenterVertically,
@@ -359,22 +355,16 @@ private fun AnnouncementDiscoveryScreen(
                         ) {
                             IconButton(
                                 modifier = Modifier.size(56.dp),
-                                onClick = onOpenFilters,
+                                onClick = onToggleContentMode,
                             ) {
                                 Icon(
-                                    imageVector = Icons.Outlined.Tune,
-                                    contentDescription = stringResource(R.string.discovery_filters_button),
+                                    imageVector = Icons.AutoMirrored.Outlined.List,
+                                    contentDescription = stringResource(R.string.discovery_switch_to_list),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
                         }
                     }
-
-                    // Quick filter chips
-                    QuickActionChipsRow(
-                        filters = state.filters,
-                        onToggleQuickAction = onToggleQuickAction,
-                    )
                 }
 
                 // Right-side map action buttons
@@ -407,76 +397,6 @@ private fun AnnouncementDiscoveryScreen(
                         contentDescription = stringResource(R.string.discovery_pan_mode),
                         onClick = { },
                     )
-                }
-
-                Surface(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .windowInsetsPadding(
-                            WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal),
-                        )
-                        .padding(
-                            start = MaterialTheme.spacing.large,
-                            end = MaterialTheme.spacing.large,
-                            bottom = MaterialTheme.spacing.large,
-                        )
-                        .fillMaxWidth(),
-                    shape = RoundedCornerShape(24.dp),
-                    color = MaterialTheme.colorScheme.surface,
-                    shadowElevation = 6.dp,
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(onClick = onOpenFilters)
-                            .padding(MaterialTheme.spacing.large),
-                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Tune,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(2.dp),
-                        ) {
-                            Text(
-                                text = stringResource(R.string.discovery_filters_and_route),
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
-                            Text(
-                                text = stringResource(R.string.discovery_filters_and_route_subtitle),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
-
-                        Surface(
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.tertiary,
-                        ) {
-                            Icon(
-                                modifier = Modifier.padding(MaterialTheme.spacing.medium),
-                                imageVector = Icons.Outlined.ArrowForward,
-                                contentDescription = null,
-                                tint = Color.White,
-                            )
-                        }
-                    }
                 }
 
                 // Empty state overlay
@@ -742,7 +662,7 @@ private fun YandexMapCanvas(
     val markerIconCache = remember { mutableMapOf<String, ImageProvider>() }
 
     val containerAndMapView = remember {
-        val mv = MapView(context)
+        val mv = createMovableYandexMapView(context)
         val container = FrameLayout(context).apply {
             layoutParams = ViewGroup.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT,
@@ -763,38 +683,69 @@ private fun YandexMapCanvas(
 
     var isMapReady by remember { mutableStateOf(false) }
     var isMapStarted by remember { mutableStateOf(false) }
+    var mapContainerSize by remember { mutableStateOf(IntSize.Zero) }
 
-    // Manage lifecycle — delay onStart until after first layout
+    // Manage lifecycle: start MapKit only after the GL surface has a real size.
     DisposableEffect(lifecycleOwner) {
         val lifecycle = lifecycleOwner.lifecycle
+        var disposed = false
+        var cameraListenerAttached = false
+        val cameraRefreshListener = CameraListener { _, _, _, finished ->
+            if (finished) {
+                YandexMapKitLifecycle.refreshSurface(mapView, resyncCamera = false)
+            }
+        }
 
-        // Wait for the view to be laid out before starting the map.
-        // This ensures the GL surface initializes at the correct size.
-        val layoutListener = object : ViewTreeObserver.OnGlobalLayoutListener {
+        fun initializeMapObjectsIfNeeded() {
+            if (mapCollections.markerCollection != null) return
+
+            val map = mapView.mapWindow.map
+            val rootCollection = map.mapObjects
+            mapCollections.routeCollection = rootCollection.addCollection()
+            mapCollections.previewBranchCollection = rootCollection.addCollection()
+            mapCollections.selectedBranchCollection = rootCollection.addCollection()
+            mapCollections.markerCollection = rootCollection.addCollection()
+
+            map.move(
+                CameraPosition(
+                    Point(55.751244, 37.618423),
+                    10f,
+                    0f,
+                    0f,
+                ),
+            )
+        }
+
+        fun attachCameraRefreshListenerIfNeeded() {
+            if (cameraListenerAttached) return
+            mapView.mapWindow.map.addCameraListener(cameraRefreshListener)
+            cameraListenerAttached = true
+        }
+
+        fun refreshMapSurface() {
+            YandexMapKitLifecycle.refreshSurface(mapView)
+        }
+
+        fun startMapIfPossible(): Boolean {
+            if (disposed) return false
+            if (isMapStarted) return true
+            if (!lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) return false
+            if (mapView.width <= 0 || mapView.height <= 0) return false
+
+            YandexMapKitLifecycle.start(mapView)
+            isMapStarted = true
+            initializeMapObjectsIfNeeded()
+            attachCameraRefreshListenerIfNeeded()
+            isMapReady = true
+            refreshMapSurface()
+            return true
+        }
+
+        lateinit var layoutListener: ViewTreeObserver.OnGlobalLayoutListener
+        layoutListener = object : ViewTreeObserver.OnGlobalLayoutListener {
             override fun onGlobalLayout() {
-                if (mapView.width > 0 && mapView.height > 0 && !isMapStarted) {
+                if (startMapIfPossible()) {
                     mapView.viewTreeObserver.removeOnGlobalLayoutListener(this)
-                    if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-                        MapKitFactory.getInstance().onStart()
-                        mapView.onStart()
-                        isMapStarted = true
-
-                        // Initialize map collections
-                        val map = mapView.mapWindow.map
-                        val rootCollection = map.mapObjects
-                        mapCollections.routeCollection = rootCollection.addCollection()
-                        mapCollections.previewBranchCollection = rootCollection.addCollection()
-                        mapCollections.selectedBranchCollection = rootCollection.addCollection()
-                        mapCollections.markerCollection = rootCollection.addCollection()
-
-                        map.move(
-                            CameraPosition(
-                                Point(55.751244, 37.618423),
-                                10f, 0f, 0f,
-                            ),
-                        )
-                        isMapReady = true
-                    }
                 }
             }
         }
@@ -803,29 +754,38 @@ private fun YandexMapCanvas(
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_START -> {
-                    if (isMapStarted) {
-                        // Already started after layout — just re-start after stop
-                        MapKitFactory.getInstance().onStart()
-                        mapView.onStart()
+                    if (startMapIfPossible()) {
+                        mapView.viewTreeObserver.removeOnGlobalLayoutListener(layoutListener)
                     }
-                    // Otherwise layoutListener will handle it
                 }
                 Lifecycle.Event.ON_STOP -> {
                     if (isMapStarted) {
-                        mapView.onStop()
-                        MapKitFactory.getInstance().onStop()
+                        isMapReady = false
+                        YandexMapKitLifecycle.stop(mapView)
+                        isMapStarted = false
                     }
                 }
                 else -> {}
             }
         }
         lifecycle.addObserver(observer)
+        mapView.post {
+            if (startMapIfPossible()) {
+                mapView.viewTreeObserver.removeOnGlobalLayoutListener(layoutListener)
+            }
+        }
         onDispose {
+            disposed = true
             mapView.viewTreeObserver.removeOnGlobalLayoutListener(layoutListener)
             lifecycle.removeObserver(observer)
-            if (isMapStarted && lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
-                mapView.onStop()
-                MapKitFactory.getInstance().onStop()
+            if (cameraListenerAttached) {
+                runCatching { mapView.mapWindow.map.removeCameraListener(cameraRefreshListener) }
+                cameraListenerAttached = false
+            }
+            if (isMapStarted) {
+                isMapReady = false
+                YandexMapKitLifecycle.stop(mapView)
+                isMapStarted = false
             }
         }
     }
@@ -1084,9 +1044,22 @@ private fun YandexMapCanvas(
         onCameraCommandHandled(command.id)
     }
 
+    LaunchedEffect(isMapReady, mapContainerSize) {
+        if (!isMapReady || mapContainerSize == IntSize.Zero) return@LaunchedEffect
+        YandexMapKitLifecycle.refreshSurface(mapView)
+    }
+
     AndroidView(
         factory = { container },
-        modifier = modifier,
+        modifier = modifier.onSizeChanged { size ->
+            if (size.width > 0 && size.height > 0 && size != mapContainerSize) {
+                mapContainerSize = size
+            }
+        },
+        update = { view ->
+            YandexMapKitLifecycle.refreshSurface(mapView)
+            view.invalidate()
+        },
     )
 }
 
@@ -1892,7 +1865,6 @@ private fun DiscoveryListContent(
                                     item = item,
                                     onOpenDetails = { onOpenAnnouncementDetails(item.announcement.id) },
                                     onShowOnMap = { onShowAnnouncementOnMap(item.announcement.id) },
-                                    apiBaseUrl = state.apiBaseUrl,
                                 )
                             }
                         }
@@ -1937,7 +1909,6 @@ private fun InlineMessageCard(
 @Composable
 private fun AnnouncementListCard(
     item: DiscoveryAnnouncementItemUi,
-    apiBaseUrl: String,
     onOpenDetails: () -> Unit,
     onShowOnMap: () -> Unit,
 ) {
@@ -1945,33 +1916,34 @@ private fun AnnouncementListCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onOpenDetails),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f),
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
     ) {
         Column(
-            modifier = Modifier.padding(MaterialTheme.spacing.large),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.Top,
             ) {
-                AnnouncementImage(
-                    announcement = item.announcement,
-                    apiBaseUrl = apiBaseUrl,
-                    modifier = Modifier.size(width = 84.dp, height = 84.dp),
-                )
+                item.previewImageUrl?.let { imageUrl ->
+                    AnnouncementImage(
+                        imageUrl = imageUrl,
+                        modifier = Modifier.size(88.dp),
+                    )
+                }
 
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                    verticalArrangement = Arrangement.spacedBy(7.dp),
                 ) {
                     Text(
                         text = item.announcement.title,
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
@@ -1996,20 +1968,25 @@ private fun AnnouncementListCard(
 
             if (item.point != null) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     OutlinedButton(
                         onClick = onShowOnMap,
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.Place,
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(16.dp),
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = stringResource(R.string.discovery_show_on_map))
+                        Text(
+                            text = stringResource(R.string.discovery_show_on_map),
+                            style = MaterialTheme.typography.labelMedium,
+                        )
                     }
                 }
             }
@@ -2667,44 +2644,17 @@ private fun CenterStatusCard(
 
 @Composable
 private fun AnnouncementImage(
-    announcement: Announcement,
-    apiBaseUrl: String,
+    imageUrl: String,
     modifier: Modifier = Modifier,
 ) {
-    val previewUrl = announcement.imageUrls(apiBaseUrl).firstOrNull()
-    if (previewUrl != null) {
-        AsyncImage(
-            modifier = modifier.clip(RoundedCornerShape(14.dp)),
-            model = previewUrl,
-            contentDescription = stringResource(R.string.ads_image_preview_description),
-            contentScale = ContentScale.Crop,
-        )
-    } else {
-        Box(
-            modifier = modifier
-                .clip(RoundedCornerShape(14.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)),
-            contentAlignment = Alignment.Center,
-        ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.PhotoCameraBack,
-                    contentDescription = null,
-                    modifier = Modifier.size(20.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(
-                    text = stringResource(R.string.discovery_no_photo),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
-            }
-        }
-    }
+    AsyncImage(
+        modifier = modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f)),
+        model = imageUrl,
+        contentDescription = stringResource(R.string.ads_image_preview_description),
+        contentScale = ContentScale.Crop,
+    )
 }
 
 @Composable

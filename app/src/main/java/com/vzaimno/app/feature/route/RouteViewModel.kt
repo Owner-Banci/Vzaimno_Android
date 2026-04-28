@@ -23,18 +23,31 @@ import com.vzaimno.app.core.network.ApiError
 import com.vzaimno.app.core.network.ApiResult
 import com.vzaimno.app.data.repository.AnnouncementRepository
 import com.vzaimno.app.data.repository.RouteRepository
+import com.yandex.mapkit.RequestPoint
+import com.yandex.mapkit.RequestPointType
+import com.yandex.mapkit.directions.DirectionsFactory
+import com.yandex.mapkit.directions.driving.DrivingOptions
+import com.yandex.mapkit.directions.driving.DrivingRoute
+import com.yandex.mapkit.directions.driving.DrivingRouter
+import com.yandex.mapkit.directions.driving.DrivingRouterType
+import com.yandex.mapkit.directions.driving.DrivingSession
+import com.yandex.mapkit.directions.driving.VehicleOptions
+import com.yandex.mapkit.geometry.Point
+import com.yandex.runtime.Error
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlin.coroutines.resume
 
 @HiltViewModel
 class RouteViewModel @Inject constructor(
@@ -45,6 +58,9 @@ class RouteViewModel @Inject constructor(
 
     private val isMapConfigured = BuildConfig.YANDEX_MAPKIT_API_KEY.isNotBlank()
     private val savedStateHandle = savedStateHandle
+    private val drivingRouter: DrivingRouter by lazy {
+        DirectionsFactory.getInstance().createDrivingRouter(DrivingRouterType.COMBINED)
+    }
 
     private val _uiState = MutableStateFlow(
         RouteUiState(
@@ -98,9 +114,11 @@ class RouteViewModel @Inject constructor(
     private var acceptedExtraTaskIds: List<String> = emptyList()
     private var selectedPerformerTaskId: String? = savedStateHandle[PERFORMER_SELECTED_TASK_KEY]
     private var selectedCustomerTaskId: String? = savedStateHandle[CUSTOMER_SELECTED_TASK_KEY]
+    private var performerRadiusMeters: Int = savedStateHandle[PERFORMER_RADIUS_KEY] ?: DEFAULT_ROUTE_RADIUS_METERS
 
     private var loadJob: Job? = null
     private var foregroundRefreshJob: Job? = null
+    private var routeRebuildJob: Job? = null
     private var mapCommandToken: Long = 0L
     private var currentMapCommand: RouteMapCommand = RouteMapCommand.FitAll(token = mapCommandToken)
     private var lastLoadElapsedRealtime: Long = 0L
@@ -332,6 +350,39 @@ class RouteViewModel @Inject constructor(
         reduceUiState()
     }
 
+    fun updatePerformerRouteRadius(radiusMeters: Int) {
+        val normalizedRadius = radiusMeters.coerceIn(MIN_ROUTE_RADIUS_METERS, MAX_ROUTE_RADIUS_METERS)
+        if (performerRadiusMeters == normalizedRadius) return
+
+        performerRadiusMeters = normalizedRadius
+        savedStateHandle[PERFORMER_RADIUS_KEY] = normalizedRadius
+        reduceUiState()
+
+        val context = performerContext ?: return
+        routeRebuildJob?.cancel()
+        routeRebuildJob = viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                actions = _uiState.value.actions.copy(rebuildingRoute = true),
+                loading = _uiState.value.loading.copy(
+                    inlineMessage = "Ищем задачи по пути в радиусе до $normalizedRadius м.",
+                ),
+            )
+
+            refreshPerformerBaseRoute(context)
+            if (acceptedExtraTaskIds.isNotEmpty()) {
+                rebuildPerformerRoute(announceSuccess = null)
+            } else {
+                restoreBasePerformerRoute()
+                ensureSelections()
+                issueFitMap()
+                _uiState.value = _uiState.value.copy(
+                    actions = _uiState.value.actions.copy(rebuildingRoute = false),
+                )
+                reduceUiState()
+            }
+        }
+    }
+
     private fun load(showLoadingState: Boolean) {
         if (loadJob?.isActive == true) return
 
@@ -420,51 +471,31 @@ class RouteViewModel @Inject constructor(
             acceptedExtraTaskIds = emptyList()
         }
 
-        if (details == null && context != null) {
-            baseFallbackPlan = buildApproximateRoute(
-                start = context.start,
-                waypoints = emptyList(),
-                end = context.end,
-                travelMode = context.travelMode,
+        if (context != null) {
+            inlineMessage = refreshPerformerBaseRoute(
+                context = context,
+                seedDetails = details,
+                initialDetailsError = detailsResult.errorOrNull(),
             )
-            baseQuality = baseFallbackPlan.quality
-            baseNote = "Точная геометрия недоступна: показываем приближённую схему между стартом и финишем."
-
-            when (val rebuildResult = routeRepository.buildRoute(baseFallbackPlan.toBuildRequest(context))) {
-                is ApiResult.Success -> {
-                    details = rebuildResult.value
-                }
-
-                is ApiResult.Failure -> {
-                    inlineMessage = if (detailsResult.errorOrNull()?.statusCode == 404) {
-                        null
-                    } else {
-                        rebuildResult.error.message
-                    }
-                }
-            }
-        } else if (details != null && details.polyline.size < 2 && context != null) {
-            baseFallbackPlan = buildApproximateRoute(
-                start = context.start,
-                waypoints = emptyList(),
-                end = context.end,
-                travelMode = context.travelMode,
-            )
-            baseQuality = RouteMapGeometryQuality.PointsOnly
-            baseNote = "Точная геометрия пока недоступна: карта сфокусирована на ключевых точках."
+            details = performerBaseDetails
+            baseFallbackPlan = performerBaseFallbackPlan
+            baseQuality = performerBaseGeometryQuality
+            baseNote = performerBaseNote
         }
 
         performerEmptyTitle = "Маршрут готов к работе"
         performerEmptyMessage = "Основной маршрут, текущие остановки и задачи по пути собраны на одном экране."
 
-        performerBaseDetails = details
-        performerBaseFallbackPlan = baseFallbackPlan
-        performerBaseGeometryQuality = when {
-            details?.polyline?.size ?: 0 >= 2 && baseFallbackPlan == null -> RouteMapGeometryQuality.Exact
-            baseFallbackPlan != null -> baseQuality
-            else -> RouteMapGeometryQuality.PointsOnly
+        if (context == null) {
+            performerBaseDetails = details
+            performerBaseFallbackPlan = baseFallbackPlan
+            performerBaseGeometryQuality = when {
+                details?.polyline?.size ?: 0 >= 2 && baseFallbackPlan == null -> RouteMapGeometryQuality.Exact
+                baseFallbackPlan != null -> baseQuality
+                else -> RouteMapGeometryQuality.PointsOnly
+            }
+            performerBaseNote = baseNote
         }
-        performerBaseNote = baseNote
         restoreBasePerformerRoute()
 
         val availablePreviewTaskIds = details?.tasksByRoute.orEmpty().map(TaskByRoute::id).toSet()
@@ -489,6 +520,72 @@ class RouteViewModel @Inject constructor(
         ensureSelections()
         if (performerSelectableTaskIds().isNotEmpty()) {
             issueFitMap()
+        }
+    }
+
+    private suspend fun refreshPerformerBaseRoute(
+        context: RouteContext,
+        seedDetails: RouteDetails? = performerBaseDetails,
+        initialDetailsError: ApiError? = null,
+    ): String? {
+        val routeContext = context.withPerformerRadius()
+        val yandexPlan = requestYandexRoutePlan(
+            start = routeContext.start,
+            waypoints = emptyList(),
+            end = routeContext.end,
+            travelMode = routeContext.travelMode,
+        )
+
+        if (yandexPlan != null) {
+            val normalizedSeed = seedDetails.withRoutePlan(routeContext, yandexPlan)
+            when (val rebuildResult = routeRepository.buildRoute(yandexPlan.toBuildRequest(routeContext))) {
+                is ApiResult.Success -> {
+                    performerBaseDetails = rebuildResult.value.withRoutePlan(routeContext, yandexPlan)
+                    performerBaseFallbackPlan = null
+                    performerBaseGeometryQuality = RouteMapGeometryQuality.Exact
+                    performerBaseNote = null
+                    return null
+                }
+
+                is ApiResult.Failure -> {
+                    performerBaseDetails = normalizedSeed
+                    performerBaseFallbackPlan = null
+                    performerBaseGeometryQuality = RouteMapGeometryQuality.Exact
+                    performerBaseNote =
+                        "Маршрут построен через Yandex, но подбор задач по пути временно не обновился."
+                    return rebuildResult.error.message
+                }
+            }
+        }
+
+        val fallbackPlan = buildApproximateRoute(
+            start = routeContext.start,
+            waypoints = emptyList(),
+            end = routeContext.end,
+            travelMode = routeContext.travelMode,
+        )
+        performerBaseFallbackPlan = fallbackPlan
+        performerBaseGeometryQuality = if (seedDetails?.polyline.orEmpty().size >= 2) {
+            RouteMapGeometryQuality.PointsOnly
+        } else {
+            fallbackPlan.quality
+        }
+        performerBaseNote = if (seedDetails?.polyline.orEmpty().size >= 2) {
+            "Yandex не вернул дорожную геометрию: карта показывает сохранённую схему маршрута."
+        } else {
+            "Yandex не вернул дорожную геометрию: показываем приближённую схему между точками."
+        }
+
+        when (val rebuildResult = routeRepository.buildRoute(fallbackPlan.toBuildRequest(routeContext))) {
+            is ApiResult.Success -> {
+                performerBaseDetails = rebuildResult.value
+                return null
+            }
+
+            is ApiResult.Failure -> {
+                performerBaseDetails = seedDetails ?: fallbackPlan.toRouteDetails(routeContext)
+                return if (initialDetailsError?.statusCode == 404) null else rebuildResult.error.message
+            }
         }
     }
 
@@ -553,10 +650,36 @@ class RouteViewModel @Inject constructor(
         }
 
         val context = contextResult.successOrNull()
-        val details = detailsResult.successOrNull()
+        var details = detailsResult.successOrNull()
         val start = context?.start ?: announcement.sourcePoint
         val end = context?.end ?: announcement.destinationPoint ?: announcement.sourcePoint
         val inferredTravelMode = context?.travelMode ?: inferTravelMode(announcement)
+        val yandexPlan = if (start != null && end != null) {
+            requestYandexRoutePlan(
+                start = start,
+                waypoints = emptyList(),
+                end = end,
+                travelMode = inferredTravelMode,
+            )
+        } else {
+            null
+        }
+        val yandexContext = context ?: if (start != null && end != null) {
+            routeContextFromAnnouncement(
+                announcement = announcement,
+                start = start,
+                end = end,
+                travelMode = inferredTravelMode,
+            )
+        } else {
+            null
+        }
+        if (yandexPlan != null && yandexContext != null) {
+            details = details.withRoutePlan(
+                context = yandexContext,
+                plan = yandexPlan,
+            )
+        }
         val fallbackPlan = if (start != null && end != null && details == null) {
             buildApproximateRoute(
                 start = start,
@@ -577,14 +700,16 @@ class RouteViewModel @Inject constructor(
 
         customerRouteContexts[announcementId] = context
         customerRouteDetails[announcementId] = details
-        customerFallbackPlans[announcementId] = fallbackPlan
+        customerFallbackPlans[announcementId] = if (yandexPlan == null) fallbackPlan else null
         customerGeometryQualities[announcementId] = when {
+            yandexPlan != null -> RouteMapGeometryQuality.Exact
             details?.polyline?.size ?: 0 >= 2 -> RouteMapGeometryQuality.Exact
             fallbackPlan != null && details != null -> RouteMapGeometryQuality.PointsOnly
             fallbackPlan != null -> fallbackPlan.quality
             else -> RouteMapGeometryQuality.PointsOnly
         }
         customerRouteNotes[announcementId] = when {
+            yandexPlan != null -> null
             details?.polyline?.size ?: 0 >= 2 -> null
             fallbackPlan != null && details != null -> {
                 "Точная геометрия пока недоступна: карта показывает только основное направление задачи."
@@ -637,27 +762,43 @@ class RouteViewModel @Inject constructor(
         val waypoints = orderedAcceptedTasks.mapNotNull { task ->
             routeTaskCoordinate(task, announcementCache[task.id])
         }
+        val routeContext = context.withPerformerRadius()
         val approximatePlan = buildApproximateRoute(
-            start = context.start,
+            start = routeContext.start,
             waypoints = waypoints,
-            end = context.end,
-            travelMode = context.travelMode,
+            end = routeContext.end,
+            travelMode = routeContext.travelMode,
         )
+        val yandexPlan = requestYandexRoutePlan(
+            start = routeContext.start,
+            waypoints = waypoints,
+            end = routeContext.end,
+            travelMode = routeContext.travelMode,
+        )
+        val routePlan = yandexPlan ?: approximatePlan
 
-        when (val result = routeRepository.buildRoute(approximatePlan.toBuildRequest(context))) {
+        when (val result = routeRepository.buildRoute(routePlan.toBuildRequest(routeContext))) {
             is ApiResult.Success -> {
-                performerDisplayedDetails = result.value
-                performerDisplayedFallbackPlan = approximatePlan
-                performerDisplayedGeometryQuality = RouteMapGeometryQuality.Approximate
-                performerDisplayedNote =
-                    "Маршрут перестроен по принятым точкам и может быть приблизительным, пока сервер не отдаёт точную геометрию."
+                performerDisplayedDetails = result.value.withRoutePlan(routeContext, routePlan)
+                performerDisplayedFallbackPlan = if (yandexPlan == null) approximatePlan else null
+                performerDisplayedGeometryQuality = routePlan.quality
+                performerDisplayedNote = if (yandexPlan == null) {
+                    "Yandex не вернул дорожную геометрию: показываем приближённую схему маршрута."
+                } else {
+                    null
+                }
             }
 
             is ApiResult.Failure -> {
-                performerDisplayedFallbackPlan = approximatePlan
-                performerDisplayedGeometryQuality = approximatePlan.quality
-                performerDisplayedNote =
+                performerDisplayedDetails = displayedDetails?.withRoutePlan(routeContext, routePlan)
+                    ?: routePlan.toRouteDetails(routeContext)
+                performerDisplayedFallbackPlan = if (yandexPlan == null) approximatePlan else null
+                performerDisplayedGeometryQuality = routePlan.quality
+                performerDisplayedNote = if (yandexPlan == null) {
                     "Не удалось обновить подбор задач по пути. Показываем текущую схему маршрута приблизительно."
+                } else {
+                    "Маршрут построен через Yandex, но подбор задач по пути временно не обновился."
+                }
                 _uiState.value = _uiState.value.copy(
                     loading = _uiState.value.loading.copy(
                         inlineMessage = result.error.message,
@@ -742,6 +883,8 @@ class RouteViewModel @Inject constructor(
                 metrics = emptyList(),
                 activeTasks = emptyList(),
                 previewTasks = emptyList(),
+                radiusMeters = performerRadiusMeters,
+                radiusOptionsMeters = ROUTE_RADIUS_OPTIONS_METERS,
                 nextStep = null,
                 emptyTitle = performerEmptyTitle,
                 emptyMessage = performerEmptyMessage,
@@ -757,6 +900,8 @@ class RouteViewModel @Inject constructor(
                 metrics = performerMetrics(),
                 activeTasks = activeTasks,
                 previewTasks = previewTasks,
+                radiusMeters = performerRadiusMeters,
+                radiusOptionsMeters = ROUTE_RADIUS_OPTIONS_METERS,
                 nextStep = performerNextStep(activeTasks = activeTasks, previewTasks = previewTasks),
                 emptyTitle = performerEmptyTitle,
                 emptyMessage = performerEmptyMessage,
@@ -1464,10 +1609,123 @@ class RouteViewModel @Inject constructor(
 
     private fun ApiResult<*>.errorOrNull(): ApiError? = (this as? ApiResult.Failure)?.error
 
+    private fun RouteContext.withPerformerRadius(): RouteContext = copy(radiusM = performerRadiusMeters)
+
+    private suspend fun requestYandexRoutePlan(
+        start: com.vzaimno.app.core.model.GeoPoint,
+        waypoints: List<com.vzaimno.app.core.model.GeoPoint>,
+        end: com.vzaimno.app.core.model.GeoPoint,
+        travelMode: RouteTravelMode,
+    ): ApproximateRoutePlan? {
+        if (!isMapConfigured) return null
+        val requestPoints = buildList {
+            add(RequestPoint(start.toYandexPoint(), RequestPointType.WAYPOINT, null, null, null))
+            waypoints.forEach { waypoint ->
+                add(RequestPoint(waypoint.toYandexPoint(), RequestPointType.WAYPOINT, null, null, null))
+            }
+            add(RequestPoint(end.toYandexPoint(), RequestPointType.WAYPOINT, null, null, null))
+        }
+        if (requestPoints.size < 2) return null
+
+        return suspendCancellableCoroutine { continuation ->
+            var session: DrivingSession? = null
+            val listener = object : DrivingSession.DrivingRouteListener {
+                override fun onDrivingRoutes(routes: List<DrivingRoute>) {
+                    val points = routes.firstOrNull()?.geometry?.points
+                        ?.map { point -> com.vzaimno.app.core.model.GeoPoint(point.latitude, point.longitude) }
+                        .orEmpty()
+                    val plan = points.takeIf { it.size >= 2 }?.let {
+                        routePlanFromPolyline(
+                            polyline = it,
+                            travelMode = travelMode,
+                            quality = RouteMapGeometryQuality.Exact,
+                        )
+                    }
+                    if (continuation.isActive) {
+                        continuation.resume(plan)
+                    }
+                }
+
+                override fun onDrivingRoutesError(error: Error) {
+                    if (continuation.isActive) {
+                        continuation.resume(null)
+                    }
+                }
+            }
+
+            session = drivingRouter.requestRoutes(
+                requestPoints,
+                DrivingOptions().setRoutesCount(1),
+                VehicleOptions(),
+                listener,
+            )
+            continuation.invokeOnCancellation {
+                session?.cancel()
+            }
+        }
+    }
+
+    private fun RouteDetails?.withRoutePlan(
+        context: RouteContext,
+        plan: ApproximateRoutePlan,
+    ): RouteDetails {
+        val existing = this
+        return if (existing != null) {
+            existing.copy(
+                startAddress = context.startAddress,
+                endAddress = context.endAddress,
+                distanceMeters = plan.distanceMeters,
+                durationSeconds = plan.durationSeconds,
+                distanceText = formatDistance(plan.distanceMeters),
+                durationText = formatDuration(plan.durationSeconds),
+                polyline = plan.polyline,
+            )
+        } else {
+            plan.toRouteDetails(context)
+        }
+    }
+
+    private fun ApproximateRoutePlan.toRouteDetails(
+        context: RouteContext,
+        tasksByRoute: List<TaskByRoute> = emptyList(),
+    ): RouteDetails = RouteDetails(
+        entityId = context.entityId,
+        startAddress = context.startAddress,
+        endAddress = context.endAddress,
+        distanceMeters = distanceMeters,
+        durationSeconds = durationSeconds,
+        distanceText = formatDistance(distanceMeters),
+        durationText = formatDuration(durationSeconds),
+        polyline = polyline,
+        tasksByRoute = tasksByRoute,
+    )
+
+    private fun routeContextFromAnnouncement(
+        announcement: Announcement,
+        start: com.vzaimno.app.core.model.GeoPoint,
+        end: com.vzaimno.app.core.model.GeoPoint,
+        travelMode: RouteTravelMode,
+    ): RouteContext = RouteContext(
+        entityId = announcement.id,
+        startAddress = announcement.primarySourceAddress.orEmpty(),
+        endAddress = announcement.primaryDestinationAddress ?: announcement.primarySourceAddress.orEmpty(),
+        start = start,
+        end = end,
+        radiusM = performerRadiusMeters,
+        travelMode = travelMode,
+    )
+
+    private fun com.vzaimno.app.core.model.GeoPoint.toYandexPoint(): Point = Point(latitude, longitude)
+
     companion object {
         private const val SELECTED_ROLE_KEY = "route_selected_role"
         private const val PERFORMER_SELECTED_TASK_KEY = "route_selected_performer_task"
         private const val CUSTOMER_SELECTED_TASK_KEY = "route_selected_customer_task"
+        private const val PERFORMER_RADIUS_KEY = "route_performer_radius_meters"
+        private const val DEFAULT_ROUTE_RADIUS_METERS = 500
+        private const val MIN_ROUTE_RADIUS_METERS = 100
+        private const val MAX_ROUTE_RADIUS_METERS = 5000
+        private val ROUTE_RADIUS_OPTIONS_METERS = listOf(500, 1000, 1500, 2000)
         private const val MAX_ACCEPTED_EXTRA_TASKS = 2
         private const val FOREGROUND_STALE_AFTER_MS = 15_000L
     }
