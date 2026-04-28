@@ -215,6 +215,7 @@ internal fun RouteYandexMap(
         if (!isMapReady) return@LaunchedEffect
         val markerCollection = mapCollections.markerCollection ?: return@LaunchedEffect
         markerCollection.clear()
+        mapCollections.markerTapListeners.clear()
 
         state.markers.forEach { marker ->
             val isSelected = marker.id == state.selectedMarkerId
@@ -238,10 +239,12 @@ internal fun RouteYandexMap(
                 marker.kind == RouteMarkerKind.Start -> 16f
                 else -> 12f
             }
-            placemark.addTapListener(MapObjectTapListener { _, _ ->
+            val listener = MapObjectTapListener { _, _ ->
                 currentOnMarkerSelected(marker.id)
                 true
-            })
+            }
+            mapCollections.markerTapListeners.add(listener)
+            placemark.addTapListener(listener)
         }
     }
 
@@ -315,6 +318,7 @@ internal fun RouteYandexMap(
 private class RouteMapCollectionsHolder {
     var polylineCollection: MapObjectCollection? = null
     var markerCollection: MapObjectCollection? = null
+    val markerTapListeners: MutableList<MapObjectTapListener> = mutableListOf()
 }
 
 private fun fitRouteContent(

@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -69,6 +71,7 @@ import coil.compose.AsyncImage
 import com.vzaimno.app.R
 import com.vzaimno.app.core.designsystem.theme.spacing
 import com.vzaimno.app.core.model.Announcement
+import com.vzaimno.app.core.model.detailChipLabels
 import com.vzaimno.app.core.model.formattedBudgetText
 import com.vzaimno.app.core.model.offersCount
 import com.vzaimno.app.core.model.previewImageUrl
@@ -127,6 +130,9 @@ private data class PendingListAction(
     val announcementTitle: String,
     val type: AnnouncementMutationType,
 )
+
+private val AdsPinnedCreateButtonBottomOffset = 112.dp
+private val AdsListBottomContentPadding = 220.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -197,9 +203,7 @@ private fun MyAnnouncementsScreen(
             .background(MaterialTheme.colorScheme.background),
     ) {
         PullToRefreshBox(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(bottom = 72.dp),
+            modifier = Modifier.fillMaxSize(),
             isRefreshing = state.isRefreshing,
             onRefresh = onRefresh,
         ) {
@@ -215,7 +219,7 @@ private fun MyAnnouncementsScreen(
                     start = MaterialTheme.spacing.xLarge,
                     top = MaterialTheme.spacing.xxLarge,
                     end = MaterialTheme.spacing.xLarge,
-                    bottom = MaterialTheme.spacing.xxxLarge,
+                    bottom = AdsListBottomContentPadding,
                 ),
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
             ) {
@@ -338,24 +342,28 @@ private fun MyAnnouncementsScreen(
             Surface(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .fillMaxWidth(),
-                color = MaterialTheme.colorScheme.background.copy(alpha = 0.97f),
-                shadowElevation = 8.dp,
+                    .fillMaxWidth()
+                    .padding(bottom = AdsPinnedCreateButtonBottomOffset),
+                color = Color.Transparent,
+                shadowElevation = 0.dp,
             ) {
                 Button(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = MaterialTheme.spacing.xLarge, vertical = 12.dp),
+                        .padding(horizontal = MaterialTheme.spacing.xLarge, vertical = 8.dp)
+                        .height(56.dp),
                     onClick = onOpenCreate,
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(18.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.AddCircleOutline,
                         contentDescription = null,
+                        modifier = Modifier.size(24.dp),
                     )
                     Text(
                         modifier = Modifier.padding(start = 8.dp),
                         text = stringResource(R.string.ads_create_entry_button),
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                     )
                 }
             }
@@ -369,7 +377,8 @@ private fun AdsSummaryCard(summary: AdsSummaryUi) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 1.dp,
+        shadowElevation = 3.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.84f)),
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
@@ -621,7 +630,8 @@ private fun AnnouncementCardBody(
             .clickable(enabled = !isMutating, onClick = onClick),
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 1.dp,
+        shadowElevation = 3.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.84f)),
     ) {
         Row(
             modifier = Modifier
@@ -646,6 +656,7 @@ private fun AnnouncementCardBody(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AnnouncementCardContent(
     announcement: Announcement,
@@ -656,6 +667,7 @@ private fun AnnouncementCardContent(
     val status = announcement.statusPresentation()
     val decisionSummary = announcementListDecisionSummaryText(announcement)
     val budgetText = announcement.formattedBudgetText
+    val chipLabels = announcement.detailChipLabels()
 
     Column(
         modifier = modifier,
@@ -668,7 +680,7 @@ private fun AnnouncementCardContent(
             Text(
                 modifier = Modifier.weight(1f),
                 text = announcement.title,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -676,10 +688,21 @@ private fun AnnouncementCardContent(
             AnnouncementStatusBadge(presentation = status)
         }
 
-        if (budgetText != null) {
-            Row(
+        if (chipLabels.isNotEmpty()) {
+            FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
+                chipLabels.forEach { label ->
+                    val isBudget = budgetText != null && label == budgetText
+                    AnnouncementInfoChip(
+                        label = label,
+                        leadingIcon = if (isBudget) Icons.Outlined.Inventory2 else null,
+                    )
+                }
+            }
+        } else if (budgetText != null) {
+            Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small)) {
                 AnnouncementInfoChip(
                     label = budgetText,
                     leadingIcon = Icons.Outlined.Inventory2,
@@ -812,7 +835,7 @@ private fun AnnouncementInfoChip(
             }
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

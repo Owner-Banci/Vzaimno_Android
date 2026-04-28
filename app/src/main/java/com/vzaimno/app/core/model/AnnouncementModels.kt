@@ -508,12 +508,94 @@ val Announcement.shortStructuredSubtitle: String
             structuredData.actionType?.title,
             structuredData.helpType ?: structuredData.purchaseType ?: structuredData.itemType,
             primarySourceAddress ?: structuredData.sourceKind?.title,
-        ).map {
-            if (it.contains('_') || it.contains('-')) humanizeRawValue(it) else it
-        }
+        ).map(::announcementDisplayLabel)
 
         return parts.take(3).joinToString(separator = " • ")
     }
+
+fun Announcement.detailChipLabels(maxCount: Int = 4): List<String> {
+    val structured = structuredData
+    val labels = mutableListOf<String>()
+
+    fun addLabel(value: String?) {
+        val normalized = value
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?.let(::announcementDisplayLabel)
+            ?: return
+
+        if (labels.none { it.equals(normalized, ignoreCase = true) }) {
+            labels += normalized
+        }
+    }
+
+    addLabel(formattedBudgetText)
+    addLabel(structured.actionType?.title)
+    addLabel(structured.helpType ?: structured.purchaseType ?: structured.itemType)
+    addLabel(structured.weightCategory?.title)
+    addLabel(structured.sizeCategory?.title)
+    addLabel(structured.urgency?.title)
+    addLabel(structured.sourceKind?.title)
+    addLabel(structured.destinationKind?.title)
+
+    if (structured.requiresVehicle || structured.needsTrunk) addLabel("Нужна машина")
+    if (structured.needsLoader) addLabel("Нужен помощник")
+    if (structured.contactless) addLabel("Бесконтактно")
+    if (structured.requiresReceipt) addLabel("Нужен чек")
+
+    addLabel(primarySourceAddress)
+    addLabel(primaryDestinationAddress)
+    addLabel(category)
+
+    return labels.take(maxCount)
+}
+
+private fun announcementDisplayLabel(value: String): String {
+    val normalized = value.trim()
+    val key = normalized
+        .lowercase()
+        .replace('-', '_')
+        .replace(' ', '_')
+
+    return when (key) {
+        "delivery" -> "Доставка"
+        "help" -> "Помощь"
+        "pickup" -> "Забрать"
+        "buy" -> "Купить"
+        "carry" -> "Перенести"
+        "ride" -> "Подвезти"
+        "pro_help" -> "Помощь от профи"
+        "other" -> "Другое"
+        "document", "documents" -> "Документы"
+        "grocery", "groceries", "products", "food" -> "Продукты"
+        "bag", "bags", "package", "packages" -> "Пакеты"
+        "parcel", "parcels" -> "Посылка"
+        "medicine", "medicines", "pharmacy" -> "Аптека"
+        "flowers" -> "Цветы"
+        "clothes", "clothing" -> "Одежда"
+        "keys" -> "Ключи"
+        "electronics" -> "Техника"
+        "bulky_item", "bulky" -> "Крупная вещь"
+        "small_item" -> "Небольшая вещь"
+        "fragile_item", "fragile" -> "Хрупкое"
+        "cash", "payment" -> "Оплата"
+        "store", "venue" -> "Магазин"
+        "address" -> "Адрес"
+        "office" -> "Офис"
+        "person" -> "У человека"
+        "pickup_point" -> "Пункт выдачи"
+        "handoff" -> "Передача"
+        "entrance" -> "До подъезда"
+        "metro" -> "К метро"
+        else -> {
+            if (normalized.contains('_') || normalized.contains('-')) {
+                humanizeRawValue(normalized)
+            } else {
+                normalized
+            }
+        }
+    }
+}
 
 private fun Announcement.pointFor(
     paths: List<List<String>>,

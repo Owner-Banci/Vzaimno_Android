@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -42,6 +43,8 @@ import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.outlined.AddRoad
 import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.material.icons.outlined.ErrorOutline
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import androidx.compose.material.icons.outlined.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.RemoveRoad
@@ -54,6 +57,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -66,8 +70,11 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -84,6 +91,8 @@ import androidx.lifecycle.repeatOnLifecycle
 import com.vzaimno.app.core.designsystem.theme.spacing
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.launch
+
+private val ShellBottomBarContentPadding = 148.dp
 
 @Composable
 fun RouteHomeRoute(
@@ -197,7 +206,7 @@ private fun RouteScreen(
                     start = MaterialTheme.spacing.xLarge,
                     top = MaterialTheme.spacing.xxLarge,
                     end = MaterialTheme.spacing.xLarge,
-                    bottom = 120.dp,
+                    bottom = ShellBottomBarContentPadding,
                 ),
                 verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
             ) {
@@ -485,7 +494,9 @@ private fun RouteRoleSwitcher(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 3.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.86f)),
     ) {
         Row(
             modifier = Modifier.padding(4.dp),
@@ -721,15 +732,17 @@ private fun RouteMetricsRow(metrics: List<RouteMetricUi>) {
     ) {
         items(metrics, key = RouteMetricUi::id) { metric ->
             Card(
-                shape = RoundedCornerShape(26.dp),
+                shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
                 ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.48f)),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp),
             ) {
                 Column(
                     modifier = Modifier.padding(
-                        horizontal = MaterialTheme.spacing.large,
-                        vertical = MaterialTheme.spacing.medium,
+                        horizontal = MaterialTheme.spacing.medium,
+                        vertical = MaterialTheme.spacing.small,
                     ),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
@@ -1020,6 +1033,7 @@ private fun RouteTaskCard(
         RouteTaskKind.Preview -> Color(0xFFF08A63)
         RouteTaskKind.CustomerObserved -> Color(0xFF2BB7A7)
     }
+    var detailsExpanded by rememberSaveable(task.id) { mutableStateOf(false) }
 
     Card(
         modifier = Modifier
@@ -1028,21 +1042,21 @@ private fun RouteTaskCard(
             .animateContentSize(),
         shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(
-            containerColor = if (task.isSelected) {
-                accentColor.copy(alpha = 0.08f)
+            containerColor = MaterialTheme.colorScheme.surface,
+        ),
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (task.isSelected) {
+                accentColor.copy(alpha = 0.48f)
             } else {
-                MaterialTheme.colorScheme.surface
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.86f)
             },
         ),
-        border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
-            color = if (task.isSelected) accentColor.copy(alpha = 0.32f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f),
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = if (task.isSelected) 3.dp else 1.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
     ) {
         Column(
-            modifier = Modifier.padding(MaterialTheme.spacing.xLarge),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+            modifier = Modifier.padding(MaterialTheme.spacing.large),
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         ) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
@@ -1114,12 +1128,35 @@ private fun RouteTaskCard(
                     }
                 }
 
-                if (task.isSelected) {
-                    Icon(
-                        imageVector = Icons.Outlined.CheckCircleOutline,
-                        contentDescription = null,
-                        tint = accentColor,
-                    )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    if (task.isSelected) {
+                        Icon(
+                            imageVector = Icons.Outlined.CheckCircleOutline,
+                            contentDescription = null,
+                            tint = accentColor,
+                        )
+                    }
+                    IconButton(
+                        modifier = Modifier.size(36.dp),
+                        onClick = { detailsExpanded = !detailsExpanded },
+                    ) {
+                        Icon(
+                            imageVector = if (detailsExpanded) {
+                                Icons.Outlined.KeyboardArrowUp
+                            } else {
+                                Icons.Outlined.KeyboardArrowDown
+                            },
+                            contentDescription = if (detailsExpanded) {
+                                "Свернуть описание"
+                            } else {
+                                "Показать описание"
+                            },
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
 
@@ -1162,7 +1199,7 @@ private fun RouteTaskCard(
             }
 
             AnimatedVisibility(
-                visible = task.isSelected,
+                visible = detailsExpanded,
                 enter = fadeIn() + slideInVertically(initialOffsetY = { it / 8 }),
                 exit = fadeOut() + slideOutVertically(targetOffsetY = { it / 8 }),
             ) {
@@ -1272,17 +1309,17 @@ private fun RouteChip(
 ) {
     val background = when (tone) {
         RouteChipTone.Accent -> MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
-        RouteChipTone.Neutral -> MaterialTheme.colorScheme.surfaceVariant
-        RouteChipTone.Positive -> Color(0xFFDBF2E3)
-        RouteChipTone.Warning -> Color(0xFFFFE9C7)
-        RouteChipTone.Danger -> Color(0xFFFFDAD7)
+        RouteChipTone.Neutral -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)
+        RouteChipTone.Positive -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f)
+        RouteChipTone.Warning -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.72f)
+        RouteChipTone.Danger -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.72f)
     }
     val foreground = when (tone) {
         RouteChipTone.Accent -> MaterialTheme.colorScheme.primary
         RouteChipTone.Neutral -> MaterialTheme.colorScheme.onSurfaceVariant
-        RouteChipTone.Positive -> Color(0xFF126A38)
-        RouteChipTone.Warning -> Color(0xFF8A4E00)
-        RouteChipTone.Danger -> Color(0xFF9D1A14)
+        RouteChipTone.Positive -> MaterialTheme.colorScheme.primary
+        RouteChipTone.Warning -> MaterialTheme.colorScheme.secondary
+        RouteChipTone.Danger -> MaterialTheme.colorScheme.error
     }
 
     Surface(
@@ -1308,8 +1345,8 @@ private fun RouteStageChip(
     onClick: () -> Unit,
 ) {
     val background = when (chip.state) {
-        RouteStageProgressState.Done -> Color(0xFFE0F3E7)
-        RouteStageProgressState.Current -> Color(0xFF2BB7A7).copy(alpha = 0.16f)
+        RouteStageProgressState.Done -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.72f)
+        RouteStageProgressState.Current -> MaterialTheme.colorScheme.primary.copy(alpha = 0.16f)
         RouteStageProgressState.Pending -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f)
     }
     val foreground = when (chip.state) {

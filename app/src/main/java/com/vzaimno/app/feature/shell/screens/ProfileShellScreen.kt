@@ -60,6 +60,8 @@ import com.vzaimno.app.feature.profile.ProfileDivider
 import com.vzaimno.app.feature.profile.ProfileReviewCard
 import com.vzaimno.app.feature.profile.ProfileHomeUiState
 
+private val ShellBottomBarContentPadding = 148.dp
+
 @Composable
 fun ProfileShellScreen(
     sessionState: SessionState.Authenticated,
@@ -143,7 +145,7 @@ private fun ProfileHomeScreen(
                             start = MaterialTheme.spacing.xLarge,
                             top = MaterialTheme.spacing.xxLarge,
                             end = MaterialTheme.spacing.xLarge,
-                            bottom = MaterialTheme.spacing.xxxLarge,
+                            bottom = ShellBottomBarContentPadding,
                         ),
                         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
                     ) {
@@ -401,7 +403,7 @@ private fun ProfileHomeLoadingState() {
             start = MaterialTheme.spacing.xLarge,
             top = MaterialTheme.spacing.xxLarge,
             end = MaterialTheme.spacing.xLarge,
-            bottom = MaterialTheme.spacing.xxxLarge,
+            bottom = ShellBottomBarContentPadding,
         ),
         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
     ) {

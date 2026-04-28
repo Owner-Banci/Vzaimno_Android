@@ -2,6 +2,7 @@ package com.vzaimno.app.feature.profile
 
 import android.text.format.DateUtils
 import androidx.annotation.StringRes
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -62,6 +63,7 @@ fun ProfileSectionCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface,
         ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.84f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Column(
@@ -94,7 +96,7 @@ fun ProfileHeroCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(32.dp),
+        shape = RoundedCornerShape(28.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(containerColor = Color.Transparent),
     ) {
@@ -108,10 +110,10 @@ fun ProfileHeroCard(
                         ),
                     ),
                 )
-                .padding(MaterialTheme.spacing.xLarge),
+                .padding(MaterialTheme.spacing.large),
         ) {
             Column(
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             ) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
@@ -119,7 +121,7 @@ fun ProfileHeroCard(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(64.dp)
+                            .size(58.dp)
                             .clip(CircleShape)
                             .background(Color.White.copy(alpha = 0.18f)),
                         contentAlignment = Alignment.Center,
@@ -162,7 +164,7 @@ fun ProfileHeroCard(
                         color = Color.White.copy(alpha = 0.18f),
                     ) {
                         Text(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
                             text = stringResource(R.string.profile_edit_short),
                             style = MaterialTheme.typography.labelLarge,
                             color = Color.White,
@@ -179,10 +181,11 @@ fun ProfileHeroCard(
                 }
 
                 Column(
-                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                    verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
                 ) {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
                     ) {
                         ProfileHeroMetric(
                             modifier = Modifier.weight(1f),
@@ -198,7 +201,8 @@ fun ProfileHeroCard(
                         )
                     }
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
                     ) {
                         ProfileHeroMetric(
                             modifier = Modifier.weight(1f),
@@ -227,7 +231,7 @@ private fun ProfileHeroMetric(
 ) {
     Surface(
         modifier = modifier
-            .heightIn(min = 92.dp)
+            .heightIn(min = 70.dp)
             .then(
                 if (onClick != null) {
                     Modifier.clickable(onClick = onClick)
@@ -235,12 +239,13 @@ private fun ProfileHeroMetric(
                     Modifier
                 },
             ),
-        color = Color.White.copy(alpha = 0.16f),
-        shape = RoundedCornerShape(22.dp),
+        color = Color.White.copy(alpha = 0.18f),
+        shape = RoundedCornerShape(26.dp),
+        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.10f)),
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -264,7 +269,7 @@ private fun ProfileHeroMetric(
                 text = label,
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.White.copy(alpha = 0.86f),
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
         }
@@ -289,7 +294,7 @@ fun ProfileInfoRow(
         Box(
             modifier = Modifier
                 .size(44.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(22.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)),
             contentAlignment = Alignment.Center,
         ) {

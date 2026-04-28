@@ -4,16 +4,15 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 
-// One UI 8.5 — soft, muted turquoise palette
+// Soft white + turquoise palette used by the map surface.
 private val Turquoise = Color(0xFF5ECFCB)
-private val TurquoiseDark = Color(0xFF2BA8A4)
-private val TurquoiseContainer = Color(0xFFD6F5F3)
-private val Peach = Color(0xFFFFC9A6)
-private val PeachDark = Color(0xFFE8A16C)
-private val PeachContainer = Color(0xFFFFE8D6)
-private val Milk = Color(0xFFF5F2ED)
+private val TurquoiseDark = Color(0xFF28AAA5)
+private val TurquoiseContainer = Color(0xFFD8F6F3)
+private val TurquoiseSoft = Color(0xFFEAF8F6)
+private val TurquoiseMuted = Color(0xFFBFE9E5)
+private val Milk = Color(0xFFF7FAF9)
 private val Ink = Color(0xFF1C1C1E)
-private val Sand = Color(0xFFE8E4DC)
+private val Mist = Color(0xFFEAF1EF)
 private val Charcoal = Color(0xFF111315)
 private val Slate = Color(0xFF6B7280)
 
@@ -22,9 +21,9 @@ internal val VzaimnoLightColorScheme = lightColorScheme(
     onPrimary = Color.White,
     primaryContainer = TurquoiseContainer,
     onPrimaryContainer = Ink,
-    secondary = PeachDark,
+    secondary = Turquoise,
     onSecondary = Color.White,
-    secondaryContainer = PeachContainer,
+    secondaryContainer = TurquoiseSoft,
     onSecondaryContainer = Ink,
     tertiary = Turquoise,
     onTertiary = Color.White,
@@ -32,17 +31,17 @@ internal val VzaimnoLightColorScheme = lightColorScheme(
     onBackground = Ink,
     surface = Color.White,
     onSurface = Ink,
-    surfaceVariant = Sand,
+    surfaceVariant = Mist,
     onSurfaceVariant = Slate,
     outline = Color(0xFFD1D5DB),
-    outlineVariant = Color(0xFFE5E7EB),
+    outlineVariant = Color(0xFFE1E8E6),
     surfaceContainerLowest = Color.White,
-    surfaceContainerLow = Color(0xFFFAF9F7),
-    surfaceContainer = Color(0xFFF5F3F0),
-    surfaceContainerHigh = Color(0xFFEFECE8),
-    surfaceContainerHighest = Color(0xFFE8E5E0),
+    surfaceContainerLow = Color(0xFFFCFEFD),
+    surfaceContainer = Color(0xFFF4FAF9),
+    surfaceContainerHigh = TurquoiseSoft,
+    surfaceContainerHighest = TurquoiseMuted,
     inverseSurface = Ink,
-    inverseOnSurface = Color(0xFFF5F2ED),
+    inverseOnSurface = Milk,
     error = Color(0xFFDC3545),
     onError = Color.White,
     errorContainer = Color(0xFFFDE8EA),
@@ -54,9 +53,9 @@ internal val VzaimnoDarkColorScheme = darkColorScheme(
     onPrimary = Charcoal,
     primaryContainer = TurquoiseDark,
     onPrimaryContainer = Color.White,
-    secondary = PeachContainer,
+    secondary = TurquoiseContainer,
     onSecondary = Charcoal,
-    secondaryContainer = PeachDark,
+    secondaryContainer = TurquoiseDark,
     onSecondaryContainer = Color.White,
     tertiary = Turquoise,
     onTertiary = Charcoal,

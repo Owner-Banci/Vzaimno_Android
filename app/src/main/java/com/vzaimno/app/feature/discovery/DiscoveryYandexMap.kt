@@ -93,6 +93,7 @@ internal fun MapCanvas(
     // Per-composition bitmap cache keyed by label text — avoids re-rasterizing
     // the same price pill when the list re-emits with identical items.
     val bitmapCache = remember { mutableMapOf<String, android.graphics.Bitmap>() }
+    val markerTapListeners = remember { mutableListOf<MapObjectTapListener>() }
 
     // Stable key: only re-run when the set of (id, label, lat, lng) actually
     // changes. Without this, every syncPresentation() triggers a full rebuild
@@ -138,13 +139,16 @@ internal fun MapCanvas(
 
         val mapObjects = mapView.mapWindow.map.mapObjects
         mapObjects.clear()
+        markerTapListeners.clear()
         prepared.forEach { marker ->
             val placemark = mapObjects.addPlacemark(marker.point, marker.image)
             placemark.zIndex = 1f
-            placemark.addTapListener(MapObjectTapListener { _, _ ->
+            val listener = MapObjectTapListener { _, _ ->
                 currentOnOpenDetails(marker.id)
                 true
-            })
+            }
+            markerTapListeners.add(listener)
+            placemark.addTapListener(listener)
         }
     }
 

@@ -12,6 +12,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -115,6 +116,7 @@ import com.vzaimno.app.core.designsystem.theme.spacing
 import com.vzaimno.app.core.model.Announcement
 import com.vzaimno.app.core.model.AnnouncementStructuredData
 import com.vzaimno.app.core.model.GeoPoint
+import com.vzaimno.app.core.model.detailChipLabels
 import com.vzaimno.app.core.model.detailsDescriptionText
 import com.vzaimno.app.core.model.formattedBudgetText
 import com.vzaimno.app.core.model.hasAttachedMedia
@@ -137,6 +139,8 @@ import com.yandex.mapkit.map.MapObjectCollection
 import com.yandex.mapkit.map.MapObjectTapListener
 import com.yandex.mapkit.mapview.MapView
 import com.yandex.runtime.image.ImageProvider
+
+private val ShellBottomBarContentPadding = 148.dp
 
 @Composable
 fun AnnouncementDiscoveryRoute(
@@ -803,6 +807,7 @@ private fun YandexMapCanvas(
         if (!isMapReady) return@LaunchedEffect
         val markerCollection = mapCollections.markerCollection ?: return@LaunchedEffect
         markerCollection.clear()
+        mapCollections.markerTapListeners.clear()
 
         val routeActive = state.routeState.hasRoute
         val matchedById = state.routeState.matchedAnnouncements.associateBy { it.item.announcementId }
@@ -813,6 +818,7 @@ private fun YandexMapCanvas(
                 addDiscoveryMarker(
                     collection = markerCollection,
                     iconCache = markerIconCache,
+                    tapListeners = mapCollections.markerTapListeners,
                     point = startPoint,
                     markerId = "route-start",
                     visualStyle = DiscoveryMarkerVisualStyle.Start,
@@ -825,6 +831,7 @@ private fun YandexMapCanvas(
                 addDiscoveryMarker(
                     collection = markerCollection,
                     iconCache = markerIconCache,
+                    tapListeners = mapCollections.markerTapListeners,
                     point = endPoint,
                     markerId = "route-finish",
                     visualStyle = DiscoveryMarkerVisualStyle.Finish,
@@ -840,6 +847,7 @@ private fun YandexMapCanvas(
                 addDiscoveryMarker(
                     collection = markerCollection,
                     iconCache = markerIconCache,
+                    tapListeners = mapCollections.markerTapListeners,
                     point = waypoint,
                     markerId = announcementId,
                     visualStyle = DiscoveryMarkerVisualStyle.AcceptedWaypoint,
@@ -876,6 +884,7 @@ private fun YandexMapCanvas(
             addDiscoveryMarker(
                 collection = markerCollection,
                 iconCache = markerIconCache,
+                tapListeners = mapCollections.markerTapListeners,
                 point = geoPoint,
                 markerId = item.announcement.id,
                 visualStyle = visualStyle,
@@ -1069,11 +1078,13 @@ private class MapCollectionsHolder {
     var previewBranchCollection: MapObjectCollection? = null
     var selectedBranchCollection: MapObjectCollection? = null
     var markerCollection: MapObjectCollection? = null
+    val markerTapListeners: MutableList<MapObjectTapListener> = mutableListOf()
 }
 
 private fun addDiscoveryMarker(
     collection: MapObjectCollection,
     iconCache: MutableMap<String, ImageProvider>,
+    tapListeners: MutableList<MapObjectTapListener>,
     point: GeoPoint,
     markerId: String,
     visualStyle: DiscoveryMarkerVisualStyle,
@@ -1096,10 +1107,12 @@ private fun addDiscoveryMarker(
     placemark.zIndex = zIndex
     placemark.userData = markerId
     if (onTap != null) {
-        placemark.addTapListener(MapObjectTapListener { _, _ ->
+        val listener = MapObjectTapListener { _, _ ->
             onTap()
             true
-        })
+        }
+        tapListeners.add(listener)
+        placemark.addTapListener(listener)
     }
 }
 
@@ -1843,7 +1856,7 @@ private fun DiscoveryListContent(
                         contentPadding = PaddingValues(
                             start = MaterialTheme.spacing.large,
                             end = MaterialTheme.spacing.large,
-                            bottom = MaterialTheme.spacing.xxxLarge,
+                            bottom = ShellBottomBarContentPadding,
                         ),
                         verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
                     ) {
@@ -1906,40 +1919,43 @@ private fun InlineMessageCard(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun AnnouncementListCard(
     item: DiscoveryAnnouncementItemUi,
     onOpenDetails: () -> Unit,
     onShowOnMap: () -> Unit,
 ) {
+    val chipLabels = item.announcement.detailChipLabels()
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onOpenDetails),
-        shape = RoundedCornerShape(20.dp),
+            .clickable(onClick = onShowOnMap),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.97f),
+            containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.84f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(10.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.Top,
             ) {
                 item.previewImageUrl?.let { imageUrl ->
                     AnnouncementImage(
                         imageUrl = imageUrl,
-                        modifier = Modifier.size(88.dp),
+                        modifier = Modifier.size(76.dp),
                     )
                 }
 
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(7.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Text(
                         text = item.announcement.title,
@@ -1957,11 +1973,17 @@ private fun AnnouncementListCard(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    item.budgetText?.let { budgetText ->
-                        DiscoveryInfoChip(
-                            label = budgetText,
-                            leadingIcon = Icons.Outlined.Inventory2,
-                        )
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        chipLabels.forEach { label ->
+                            val isBudget = item.budgetText != null && label == item.budgetText
+                            DiscoveryInfoChip(
+                                label = label,
+                                leadingIcon = if (isBudget) Icons.Outlined.Inventory2 else null,
+                            )
+                        }
                     }
                 }
             }
@@ -1969,23 +1991,27 @@ private fun AnnouncementListCard(
             if (item.point != null) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    OutlinedButton(
-                        onClick = onShowOnMap,
-                        shape = RoundedCornerShape(12.dp),
-                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                    ) {
+                    TextButton(onClick = onOpenDetails) {
+                        Text(
+                            text = "Подробнее",
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    }
+                    TextButton(onClick = onShowOnMap) {
                         Icon(
                             imageVector = Icons.Outlined.Place,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.primary,
                         )
-                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
+                            modifier = Modifier.padding(start = 4.dp),
                             text = stringResource(R.string.discovery_show_on_map),
-                            style = MaterialTheme.typography.labelMedium,
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = MaterialTheme.colorScheme.primary,
                         )
                     }
                 }
@@ -2843,7 +2869,7 @@ private fun DiscoveryInfoChip(
             }
             Text(
                 text = label,
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }

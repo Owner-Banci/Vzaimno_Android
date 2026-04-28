@@ -1,5 +1,6 @@
 package com.vzaimno.app.feature.chats
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -58,6 +59,8 @@ import coil.compose.AsyncImage
 import com.vzaimno.app.R
 import com.vzaimno.app.core.designsystem.theme.spacing
 
+private val ShellBottomBarContentPadding = 148.dp
+
 @Composable
 fun ChatsRoute(
     onOpenThread: (threadId: String, threadKind: String) -> Unit,
@@ -114,9 +117,9 @@ private fun ChatsScreen(
                     start = MaterialTheme.spacing.xLarge,
                     top = MaterialTheme.spacing.xxLarge,
                     end = MaterialTheme.spacing.xLarge,
-                    bottom = 120.dp,
+                    bottom = ShellBottomBarContentPadding,
                 ),
-                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
+                verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
             ) {
                 item {
                     ChatsHeader()
@@ -219,6 +222,8 @@ private fun SupportQuickCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
         color = MaterialTheme.colorScheme.primaryContainer,
+        shadowElevation = 3.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
     ) {
         Row(
             modifier = Modifier
@@ -289,7 +294,8 @@ private fun ThreadRowCard(
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 1.dp,
+        shadowElevation = 3.dp,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.84f)),
     ) {
         Row(
             modifier = Modifier
