@@ -1255,13 +1255,13 @@ class RouteViewModel @Inject constructor(
                 ?: announcement.primarySourceAddress,
             priceText = announcement.formattedBudgetText,
             kind = RouteTaskKind.CustomerObserved,
-            kindLabel = "Моя задача",
+            kindLabel = "Наблюдатель",
             statusChip = statusChipForAnnouncement(announcement, fallbackStatus = null, fallbackKind = RouteTaskKind.CustomerObserved),
             stageChips = buildStageChips(currentStage),
             nextStage = null,
             nextStageLabel = null,
             detourText = null,
-            previewSummary = "Показываем только ваш основной маршрут без чужих ответвлений.",
+            previewSummary = "Вы наблюдаете за ходом выполнения заказа.",
             coordinate = routeContext?.end
                 ?: announcement.destinationPoint
                 ?: announcement.sourcePoint,

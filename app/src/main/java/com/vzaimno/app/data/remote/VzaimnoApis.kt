@@ -179,6 +179,14 @@ interface ChatApi {
         @Body request: SendChatMessageRequestDto,
     ): ChatMessageDto
 
+    @Multipart
+    @POST("chats/{threadId}/messages/media")
+    suspend fun sendImageMessage(
+        @Path("threadId") threadId: String,
+        @Part file: MultipartBody.Part,
+        @Part("text") text: okhttp3.RequestBody?,
+    ): ChatMessageDto
+
     @GET("support/thread")
     suspend fun ensureSupportThread(): SupportThreadDto
 

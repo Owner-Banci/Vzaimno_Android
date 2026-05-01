@@ -29,6 +29,8 @@ import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -43,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vzaimno.app.R
+import com.vzaimno.app.core.designsystem.theme.AppThemeViewModel
 import com.vzaimno.app.core.designsystem.theme.spacing
 import com.vzaimno.app.core.model.ReviewRole
 import com.vzaimno.app.core.session.SessionAccessLevel
@@ -72,8 +75,10 @@ fun ProfileShellScreen(
     refreshSignal: Boolean,
     onRefreshSignalHandled: () -> Unit,
     viewModel: ProfileHomeViewModel = hiltViewModel(),
+    appThemeViewModel: AppThemeViewModel = hiltViewModel(),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val themeState by appThemeViewModel.themeState.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         viewModel.loadIfNeeded()
@@ -95,6 +100,8 @@ fun ProfileShellScreen(
         onRetryRestore = onRetryRestore,
         onOpenEdit = onOpenEdit,
         onOpenReviews = onOpenReviews,
+        isDarkTheme = themeState.isDarkTheme,
+        onDarkThemeChanged = appThemeViewModel::setDarkTheme,
     )
 }
 
@@ -109,6 +116,8 @@ private fun ProfileHomeScreen(
     onRetryRestore: () -> Unit,
     onOpenEdit: () -> Unit,
     onOpenReviews: (ReviewRole) -> Unit,
+    isDarkTheme: Boolean,
+    onDarkThemeChanged: (Boolean) -> Unit,
 ) {
     Box(
         modifier = Modifier
@@ -191,7 +200,18 @@ private fun ProfileHomeScreen(
                                             title = stringResource(R.string.profile_settings_dark_theme),
                                             subtitle = stringResource(R.string.profile_settings_dark_theme_subtitle),
                                             trailing = {
-                                                ProfileSecondaryBadge(labelRes = R.string.profile_secondary_soon)
+                                                Switch(
+                                                    checked = isDarkTheme,
+                                                    onCheckedChange = onDarkThemeChanged,
+                                                    colors = SwitchDefaults.colors(
+                                                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                                        checkedTrackColor = MaterialTheme.colorScheme.primary,
+                                                        checkedBorderColor = MaterialTheme.colorScheme.primary,
+                                                        uncheckedThumbColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                                        uncheckedBorderColor = MaterialTheme.colorScheme.outline,
+                                                    ),
+                                                )
                                             },
                                         )
                                         ProfileDivider()

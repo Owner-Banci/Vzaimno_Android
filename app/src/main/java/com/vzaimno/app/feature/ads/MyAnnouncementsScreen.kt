@@ -32,6 +32,7 @@ import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -69,6 +70,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.vzaimno.app.R
+import com.vzaimno.app.core.designsystem.theme.Background
+import com.vzaimno.app.core.designsystem.theme.PrimaryBright
 import com.vzaimno.app.core.designsystem.theme.spacing
 import com.vzaimno.app.core.model.Announcement
 import com.vzaimno.app.core.model.detailChipLabels
@@ -354,6 +357,10 @@ private fun MyAnnouncementsScreen(
                         .height(56.dp),
                     onClick = onOpenCreate,
                     shape = RoundedCornerShape(18.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = PrimaryBright,
+                        contentColor = Background,
+                    ),
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.AddCircleOutline,
@@ -861,12 +868,12 @@ private fun AnnouncementMessageCard(
     val containerColor = when (tone) {
         AnnouncementMessageTone.Default -> MaterialTheme.colorScheme.surface.copy(alpha = 0.95f)
         AnnouncementMessageTone.Warning -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
-        AnnouncementMessageTone.Error -> Color(0xFFF7E5E3)
+        AnnouncementMessageTone.Error -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.82f)
     }
     val iconTint = when (tone) {
         AnnouncementMessageTone.Default -> MaterialTheme.colorScheme.primary
         AnnouncementMessageTone.Warning -> MaterialTheme.colorScheme.secondary
-        AnnouncementMessageTone.Error -> Color(0xFFBA5C54)
+        AnnouncementMessageTone.Error -> MaterialTheme.colorScheme.error
     }
 
     Card(

@@ -53,6 +53,8 @@ fun ChatMessage.toUi(currentUserId: String?): ChatMessageUi = ChatMessageUi(
     id = id,
     senderId = senderId,
     text = text,
+    type = type,
+    mediaUrl = mediaUrl,
     createdAtEpochSeconds = createdAtEpochSeconds,
     timeLabel = formatMessageTimestamp(createdAtEpochSeconds),
     isCurrentUser = !isSystem && currentUserId != null && senderId == currentUserId,

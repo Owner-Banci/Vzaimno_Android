@@ -69,10 +69,19 @@ data class ChatMessageUi(
     val id: String,
     val senderId: String,
     val text: String,
+    val type: String,
+    val mediaUrl: String?,
     val createdAtEpochSeconds: Long,
     val timeLabel: String,
     val isCurrentUser: Boolean,
     val isSystem: Boolean,
+)
+
+@Immutable
+data class PendingChatImageUi(
+    val uriString: String,
+    val fileName: String?,
+    val mimeType: String?,
 )
 
 @Immutable
@@ -129,11 +138,7 @@ data class ChatReviewUiState(
         get() = eligibility?.canSubmit == true && !isLoadingEligibility && !isSubmitting
 
     val hasVisibleCard: Boolean
-        get() = eligibility != null && (
-            eligibility.canSubmit ||
-                eligibility.alreadySubmitted ||
-                !eligibility.message.isNullOrBlank()
-            )
+        get() = eligibility?.let { it.canSubmit || it.alreadySubmitted } == true
 }
 
 @Immutable
@@ -232,10 +237,15 @@ data class ChatThreadUiState(
     val transportState: ChatTransportUiState = ChatTransportUiState(),
     val disputeState: DisputeUiState = DisputeUiState(),
     val composerText: String = "",
+    val pendingImage: PendingChatImageUi? = null,
+    val pendingImageUploadCount: Int = 0,
+    val imageUploadStatusMessage: String? = null,
     val isSending: Boolean = false,
 ) {
     val canSend: Boolean
-        get() = composerText.trim().isNotEmpty() && !isSending && !messagesState.isInitialLoading
+        get() = (composerText.trim().isNotEmpty() || pendingImage != null) &&
+            !isSending &&
+            !messagesState.isInitialLoading
 
     val canShowOpenDisputeAction: Boolean
         get() {

@@ -446,7 +446,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.customerContent(
             item {
                 RouteSectionHeader(
                     title = "Мои задачи",
-                    subtitle = "Только read-only режим и только то, что текущий статус уже разрешает видеть заказчику.",
+                    subtitle = "Следите за маршрутом и этапами выполнения своих заказов.",
                     count = customer.tasks.size,
                 )
             }
@@ -515,7 +515,12 @@ private fun RouteRoleSwitcher(
                     } else {
                         Color.Transparent
                     },
-                    shadowElevation = if (selected) 2.dp else 0.dp,
+                    border = if (selected) {
+                        BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.34f))
+                    } else {
+                        null
+                    },
+                    shadowElevation = if (selected) 1.dp else 0.dp,
                 ) {
                     Column(
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),

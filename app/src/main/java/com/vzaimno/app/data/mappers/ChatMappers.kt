@@ -38,11 +38,13 @@ fun ChatThreadPreviewDto.toDomain(apiBaseUrl: String): ChatThreadPreview = ChatT
     isPinned = isPinned ?: (kind == "support"),
 )
 
-fun ChatMessageDto.toDomain(): ChatMessage = ChatMessage(
+fun ChatMessageDto.toDomain(apiBaseUrl: String): ChatMessage = ChatMessage(
     id = id,
     threadId = threadId,
     senderId = senderId,
     text = text,
+    type = type,
+    mediaUrl = resolveAgainstBaseUrl(apiBaseUrl, mediaUrl),
     createdAtEpochSeconds = parseInstant(createdAt)?.epochSecond ?: 0L,
 )
 

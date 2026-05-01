@@ -135,7 +135,11 @@ class ChatsViewModel @Inject constructor(
 
         _uiState.update { state ->
             state.copy(
-                threads = sorted.map { preview -> preview.toUi() },
+                threads = sorted
+                    .filterNot { preview ->
+                        ChatConversationKind.fromRaw(preview.kind) == ChatConversationKind.Support
+                    }
+                    .map { preview -> preview.toUi() },
                 supportThreadId = supportPreview?.threadId,
                 supportThreadAvailable = true,
             )

@@ -50,15 +50,20 @@ import androidx.compose.material.icons.automirrored.outlined.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.outlined.AutoAwesome
+import androidx.compose.material.icons.outlined.Build
 import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.DirectionsCar
 import androidx.compose.material.icons.outlined.Inventory2
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.NearMe
+import androidx.compose.material.icons.outlined.OpenWith
 import androidx.compose.material.icons.outlined.PanTool
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Send
+import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -92,6 +97,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asAndroidPath
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.ui.graphics.vector.VectorGroup
+import androidx.compose.ui.graphics.vector.VectorPath
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -130,6 +140,11 @@ import com.vzaimno.app.core.map.createMovableYandexMapView
 import com.vzaimno.app.core.model.taskStringValue
 import java.time.Instant
 import java.time.ZoneId
+import kotlin.math.PI
+import kotlin.math.floor
+import kotlin.math.ln
+import kotlin.math.pow
+import kotlin.math.sin
 import com.yandex.mapkit.Animation
 import com.yandex.mapkit.geometry.Point
 import com.yandex.mapkit.geometry.Polyline
@@ -649,6 +664,15 @@ private enum class DiscoveryMarkerVisualStyle {
     RegularDot,
 }
 
+private enum class DiscoveryMarkerCategoryIcon {
+    Pickup,
+    Buy,
+    Carry,
+    Ride,
+    ProHelp,
+    Other,
+}
+
 @Composable
 private fun YandexMapCanvas(
     state: DiscoveryUiState,
@@ -688,14 +712,16 @@ private fun YandexMapCanvas(
     var isMapReady by remember { mutableStateOf(false) }
     var isMapStarted by remember { mutableStateOf(false) }
     var mapContainerSize by remember { mutableStateOf(IntSize.Zero) }
+    var mapCameraZoom by remember { mutableStateOf(10f) }
 
     // Manage lifecycle: start MapKit only after the GL surface has a real size.
     DisposableEffect(lifecycleOwner) {
         val lifecycle = lifecycleOwner.lifecycle
         var disposed = false
         var cameraListenerAttached = false
-        val cameraRefreshListener = CameraListener { _, _, _, finished ->
+        val cameraRefreshListener = CameraListener { _, cameraPosition, _, finished ->
             if (finished) {
+                mapCameraZoom = cameraPosition.zoom
                 YandexMapKitLifecycle.refreshSurface(mapView, resyncCamera = false)
             }
         }
@@ -741,6 +767,7 @@ private fun YandexMapCanvas(
             initializeMapObjectsIfNeeded()
             attachCameraRefreshListenerIfNeeded()
             isMapReady = true
+            mapCameraZoom = mapView.mapWindow.map.cameraPosition.zoom
             refreshMapSurface()
             return true
         }
@@ -802,6 +829,7 @@ private fun YandexMapCanvas(
         state.routeState.acceptedAnnouncementIds,
         state.routeState.selectedAnnouncementId,
         state.detailsState.announcementId,
+        mapCameraZoom,
         isMapReady,
     ) {
         if (!isMapReady) return@LaunchedEffect
@@ -858,6 +886,64 @@ private fun YandexMapCanvas(
             }
         }
 
+        if (!routeActive) {
+            val clusters = buildDiscoveryMarkerClusters(
+                items = state.mapAnnouncements,
+                zoom = mapCameraZoom,
+            )
+            clusters.forEach { cluster ->
+                if (cluster.items.size > 1) {
+                    addDiscoveryClusterMarker(
+                        collection = markerCollection,
+                        iconCache = markerIconCache,
+                        tapListeners = mapCollections.markerTapListeners,
+                        point = cluster.point,
+                        count = cluster.items.size,
+                        onTap = {
+                            val map = mapView.mapWindow.map
+                            val current = map.cameraPosition
+                            val zoomStep = when {
+                                cluster.items.size >= 100 -> 2.4f
+                                cluster.items.size >= 20 -> 2.0f
+                                else -> 1.45f
+                            }
+                            map.move(
+                                CameraPosition(
+                                    Point(cluster.point.latitude, cluster.point.longitude),
+                                    (current.zoom + zoomStep).coerceIn(3f, 20f),
+                                    current.azimuth,
+                                    current.tilt,
+                                ),
+                                Animation(Animation.Type.SMOOTH, 0.35f),
+                                null,
+                            )
+                        },
+                    )
+                } else {
+                    val item = cluster.items.first()
+                    val markerText = item.budgetText?.take(14)
+                        ?: item.announcement.title.take(14).ifBlank { "Задача" }
+                    addDiscoveryMarker(
+                        collection = markerCollection,
+                        iconCache = markerIconCache,
+                        tapListeners = mapCollections.markerTapListeners,
+                        point = cluster.point,
+                        markerId = item.announcement.id,
+                        visualStyle = if (item.announcement.id == state.detailsState.announcementId) {
+                            DiscoveryMarkerVisualStyle.Selected
+                        } else {
+                            DiscoveryMarkerVisualStyle.DefaultPill
+                        },
+                        text = markerText,
+                        categoryIcon = item.announcement.discoveryMarkerCategoryIcon(),
+                        zIndex = if (item.announcement.id == state.detailsState.announcementId) 34f else 16f,
+                        onTap = { onOpenAnnouncementDetails(item.announcement.id) },
+                    )
+                }
+            }
+            return@LaunchedEffect
+        }
+
         state.mapAnnouncements.forEach { item ->
             val geoPoint = item.point ?: return@forEach
             if (routeActive && state.routeState.acceptedAnnouncementIds.contains(item.announcement.id)) {
@@ -889,6 +975,7 @@ private fun YandexMapCanvas(
                 markerId = item.announcement.id,
                 visualStyle = visualStyle,
                 text = markerText,
+                categoryIcon = item.announcement.discoveryMarkerCategoryIcon(),
                 zIndex = when (visualStyle) {
                     DiscoveryMarkerVisualStyle.Selected -> 34f
                     DiscoveryMarkerVisualStyle.AcceptedWaypoint -> 36f
@@ -1081,6 +1168,58 @@ private class MapCollectionsHolder {
     val markerTapListeners: MutableList<MapObjectTapListener> = mutableListOf()
 }
 
+private data class DiscoveryMarkerCluster(
+    val point: GeoPoint,
+    val items: List<DiscoveryAnnouncementItemUi>,
+)
+
+private fun buildDiscoveryMarkerClusters(
+    items: List<DiscoveryAnnouncementItemUi>,
+    zoom: Float,
+): List<DiscoveryMarkerCluster> {
+    val mapItems = items.filter { it.point != null }
+    if (mapItems.size <= 1 || zoom >= 16.7f) {
+        return mapItems.mapNotNull { item ->
+            item.point?.let { point -> DiscoveryMarkerCluster(point = point, items = listOf(item)) }
+        }
+    }
+
+    val density = android.content.res.Resources.getSystem().displayMetrics.density
+    val cellSizePx = when {
+        zoom < 9f -> 260f * density
+        zoom < 11f -> 170f * density
+        zoom < 13f -> 126f * density
+        zoom < 15f -> 104f * density
+        else -> 82f * density
+    }
+
+    return mapItems
+        .groupBy { item ->
+            val point = item.point ?: return@groupBy "empty"
+            val projected = point.projectToWorldPixels(zoom)
+            "${floor(projected.first / cellSizePx).toInt()}|${floor(projected.second / cellSizePx).toInt()}"
+        }
+        .values
+        .map { clusteredItems ->
+            val points = clusteredItems.mapNotNull(DiscoveryAnnouncementItemUi::point)
+            DiscoveryMarkerCluster(
+                point = GeoPoint(
+                    latitude = points.sumOf(GeoPoint::latitude) / points.size,
+                    longitude = points.sumOf(GeoPoint::longitude) / points.size,
+                ),
+                items = clusteredItems,
+            )
+        }
+}
+
+private fun GeoPoint.projectToWorldPixels(zoom: Float): Pair<Double, Double> {
+    val sinLatitude = sin(latitude.coerceIn(-85.05112878, 85.05112878) * PI / 180.0)
+    val scale = 256.0 * 2.0.pow(zoom.toDouble())
+    val x = (longitude + 180.0) / 360.0 * scale
+    val y = (0.5 - ln((1.0 + sinLatitude) / (1.0 - sinLatitude)) / (4.0 * PI)) * scale
+    return x to y
+}
+
 private fun addDiscoveryMarker(
     collection: MapObjectCollection,
     iconCache: MutableMap<String, ImageProvider>,
@@ -1089,10 +1228,11 @@ private fun addDiscoveryMarker(
     markerId: String,
     visualStyle: DiscoveryMarkerVisualStyle,
     text: String,
+    categoryIcon: DiscoveryMarkerCategoryIcon? = null,
     zIndex: Float,
     onTap: (() -> Unit)?,
 ) {
-    val cacheKey = "${visualStyle.name}|$text"
+    val cacheKey = "${visualStyle.name}|$text|${categoryIcon?.name.orEmpty()}"
     val placemark = collection.addPlacemark(
         Point(point.latitude, point.longitude),
         iconCache.getOrPut(cacheKey) {
@@ -1100,6 +1240,7 @@ private fun addDiscoveryMarker(
                 createDiscoveryMarkerBitmap(
                     text = text,
                     style = visualStyle,
+                    categoryIcon = categoryIcon,
                 ),
             )
         },
@@ -1116,9 +1257,65 @@ private fun addDiscoveryMarker(
     }
 }
 
+private fun addDiscoveryClusterMarker(
+    collection: MapObjectCollection,
+    iconCache: MutableMap<String, ImageProvider>,
+    tapListeners: MutableList<MapObjectTapListener>,
+    point: GeoPoint,
+    count: Int,
+    onTap: () -> Unit,
+) {
+    val cacheKey = "cluster|$count"
+    val placemark = collection.addPlacemark(
+        Point(point.latitude, point.longitude),
+        iconCache.getOrPut(cacheKey) {
+            ImageProvider.fromBitmap(createDiscoveryClusterBitmap(count))
+        },
+    )
+    placemark.zIndex = 28f
+    val listener = MapObjectTapListener { _, _ ->
+        onTap()
+        true
+    }
+    tapListeners.add(listener)
+    placemark.addTapListener(listener)
+}
+
+private fun Announcement.discoveryMarkerCategoryIcon(): DiscoveryMarkerCategoryIcon {
+    structuredData.actionType?.let { action ->
+        return when (action) {
+            AnnouncementStructuredData.ActionType.Pickup -> DiscoveryMarkerCategoryIcon.Pickup
+            AnnouncementStructuredData.ActionType.Buy -> DiscoveryMarkerCategoryIcon.Buy
+            AnnouncementStructuredData.ActionType.Carry -> DiscoveryMarkerCategoryIcon.Carry
+            AnnouncementStructuredData.ActionType.Ride -> DiscoveryMarkerCategoryIcon.Ride
+            AnnouncementStructuredData.ActionType.ProHelp -> DiscoveryMarkerCategoryIcon.ProHelp
+            AnnouncementStructuredData.ActionType.Other -> DiscoveryMarkerCategoryIcon.Other
+        }
+    }
+
+    return when (structuredData.resolvedCategory) {
+        AnnouncementStructuredData.ResolvedCategory.PickupPoint,
+        AnnouncementStructuredData.ResolvedCategory.Handoff,
+        -> DiscoveryMarkerCategoryIcon.Pickup
+
+        AnnouncementStructuredData.ResolvedCategory.Buy -> DiscoveryMarkerCategoryIcon.Buy
+        AnnouncementStructuredData.ResolvedCategory.Carry -> DiscoveryMarkerCategoryIcon.Carry
+        AnnouncementStructuredData.ResolvedCategory.Ride -> DiscoveryMarkerCategoryIcon.Ride
+        AnnouncementStructuredData.ResolvedCategory.ProHelp -> DiscoveryMarkerCategoryIcon.ProHelp
+        AnnouncementStructuredData.ResolvedCategory.Other,
+        null,
+        -> when (category.trim().lowercase()) {
+            "delivery" -> DiscoveryMarkerCategoryIcon.Pickup
+            "help", "errands" -> DiscoveryMarkerCategoryIcon.ProHelp
+            else -> DiscoveryMarkerCategoryIcon.Other
+        }
+    }
+}
+
 private fun createDiscoveryMarkerBitmap(
     text: String,
     style: DiscoveryMarkerVisualStyle,
+    categoryIcon: DiscoveryMarkerCategoryIcon? = null,
 ): android.graphics.Bitmap {
     if (style == DiscoveryMarkerVisualStyle.RegularDot) {
         return createDiscoveryDotMarkerBitmap()
@@ -1159,13 +1356,17 @@ private fun createDiscoveryMarkerBitmap(
     val textWidth = textPaint.measureText(displayText)
     val textHeight = textPaint.fontMetrics.let { it.descent - it.ascent }
     val minEndpointSize = (44 * density).toInt()
+    val shouldDrawCategoryIcon = categoryIcon != null && !isRoundEndpoint
+    val iconSize = if (shouldDrawCategoryIcon) 18f * density else 0f
+    val iconGap = if (shouldDrawCategoryIcon) 7f * density else 0f
+    val contentWidth = textWidth + iconGap + iconSize
     val bitmapWidth = if (isRoundEndpoint) {
         maxOf(
             minEndpointSize,
             (textWidth + horizontalPadding * 2).toInt(),
         )
     } else {
-        (textWidth + horizontalPadding * 2).toInt().coerceAtLeast((78 * density).toInt())
+        (contentWidth + horizontalPadding * 2).toInt().coerceAtLeast((88 * density).toInt())
     }
     val bitmapHeight = if (isRoundEndpoint) {
         maxOf(
@@ -1215,11 +1416,142 @@ private fun createDiscoveryMarkerBitmap(
     canvas.drawRoundRect(rect, cornerRadius, cornerRadius, bgPaint)
     canvas.drawRoundRect(rect, cornerRadius, cornerRadius, strokePaint)
 
-    val textX = (bitmapWidth - textWidth) / 2f
+    val contentLeft = (bitmapWidth - contentWidth) / 2f
+    val textX = if (shouldDrawCategoryIcon) {
+        contentLeft + iconSize + iconGap
+    } else {
+        contentLeft
+    }
     val textY = bitmapHeight / 2f - (textPaint.descent() + textPaint.ascent()) / 2f
+    if (categoryIcon != null && shouldDrawCategoryIcon) {
+        val iconColor = when (style) {
+            DiscoveryMarkerVisualStyle.DefaultPill -> 0xFF6B7280.toInt()
+            else -> 0xFFFFFFFF.toInt()
+        }
+        drawDiscoveryCategoryIcon(
+            canvas = canvas,
+            icon = categoryIcon,
+            centerX = contentLeft + iconSize / 2f,
+            centerY = bitmapHeight / 2f,
+            size = iconSize,
+            color = iconColor,
+        )
+    }
     canvas.drawText(displayText, textX, textY, textPaint)
 
     return bitmap
+}
+
+private fun createDiscoveryClusterBitmap(count: Int): android.graphics.Bitmap {
+    val density = android.content.res.Resources.getSystem().displayMetrics.density
+    val sizeDp = when {
+        count >= 1_000 -> 78f
+        count >= 100 -> 68f
+        count >= 10 -> 58f
+        else -> 50f
+    }
+    val size = (sizeDp * density).toInt().coerceAtLeast(50)
+    val bitmap = android.graphics.Bitmap.createBitmap(
+        size,
+        size,
+        android.graphics.Bitmap.Config.ARGB_8888,
+    )
+    val canvas = Canvas(bitmap)
+    val radius = size / 2f
+    val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFFF7F3E9.toInt()
+    }
+    val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFFFFFFFF.toInt()
+        style = Paint.Style.STROKE
+        strokeWidth = 3.2f * density
+    }
+    canvas.drawCircle(radius, radius, radius - stroke.strokeWidth / 2f, fill)
+    canvas.drawCircle(radius, radius, radius - stroke.strokeWidth / 2f, stroke)
+
+    val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFF111111.toInt()
+        textAlign = Paint.Align.CENTER
+        textSize = when {
+            count >= 1_000 -> 18f * density
+            count >= 100 -> 17f * density
+            else -> 16f * density
+        }
+        typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+    }
+    val label = count.toString()
+    val textY = radius - (textPaint.descent() + textPaint.ascent()) / 2f
+    canvas.drawText(label, radius, textY, textPaint)
+    return bitmap
+}
+
+private fun drawDiscoveryCategoryIcon(
+    canvas: Canvas,
+    icon: DiscoveryMarkerCategoryIcon,
+    centerX: Float,
+    centerY: Float,
+    size: Float,
+    color: Int,
+) {
+    val imageVector = icon.imageVector()
+    val viewportWidth = imageVector.viewportWidth.takeIf { it > 0f } ?: 24f
+    val viewportHeight = imageVector.viewportHeight.takeIf { it > 0f } ?: 24f
+    val scale = size / maxOf(viewportWidth, viewportHeight)
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        this.color = color
+        style = Paint.Style.FILL
+    }
+
+    canvas.save()
+    canvas.translate(centerX - viewportWidth * scale / 2f, centerY - viewportHeight * scale / 2f)
+    canvas.scale(scale, scale)
+    drawImageVectorGroup(
+        canvas = canvas,
+        group = imageVector.root,
+        parser = PathParser(),
+        paint = paint,
+    )
+    canvas.restore()
+}
+
+private fun DiscoveryMarkerCategoryIcon.imageVector(): ImageVector = when (this) {
+    DiscoveryMarkerCategoryIcon.Pickup -> Icons.Outlined.Inventory2
+    DiscoveryMarkerCategoryIcon.Buy -> Icons.Outlined.ShoppingCart
+    DiscoveryMarkerCategoryIcon.Carry -> Icons.Outlined.OpenWith
+    DiscoveryMarkerCategoryIcon.Ride -> Icons.Outlined.DirectionsCar
+    DiscoveryMarkerCategoryIcon.ProHelp -> Icons.Outlined.Build
+    DiscoveryMarkerCategoryIcon.Other -> Icons.Outlined.AutoAwesome
+}
+
+private fun drawImageVectorGroup(
+    canvas: Canvas,
+    group: VectorGroup,
+    parser: PathParser,
+    paint: Paint,
+) {
+    canvas.save()
+    canvas.translate(group.translationX + group.pivotX, group.translationY + group.pivotY)
+    canvas.rotate(group.rotation)
+    canvas.scale(group.scaleX, group.scaleY)
+    canvas.translate(-group.pivotX, -group.pivotY)
+
+    for (node in group) {
+        when (node) {
+            is VectorGroup -> drawImageVectorGroup(canvas, node, parser, paint)
+            is VectorPath -> {
+                val originalAlpha = paint.alpha
+                paint.alpha = (255f * node.fillAlpha).toInt().coerceIn(0, 255)
+                parser.clear()
+                val path = parser
+                    .addPathNodes(node.pathData)
+                    .toPath()
+                    .asAndroidPath()
+                canvas.drawPath(path, paint)
+                paint.alpha = originalAlpha
+            }
+        }
+    }
+    canvas.restore()
 }
 
 private fun createDiscoveryDotMarkerBitmap(): android.graphics.Bitmap {
@@ -2366,16 +2698,6 @@ private fun AnnouncementDetailsBottomSheet(
                     }
                 }
 
-                if (detailsState.offerSuccessState == DiscoveryOfferSuccessState.Submitted) {
-                    item {
-                        DetailsSectionCard {
-                            ResponseStatusBanner(
-                                title = stringResource(R.string.discovery_offer_success_title),
-                                subtitle = stringResource(R.string.discovery_offer_success_message),
-                            )
-                        }
-                    }
-                }
             }
 
             DiscoveryResponseComposer(
@@ -2384,6 +2706,7 @@ private fun AnnouncementDetailsBottomSheet(
                 onOfferMessageChange = onOfferMessageChange,
                 onOpenCustomPriceDialog = onOpenCustomPriceDialog,
                 onSubmitQuickOffer = onSubmitQuickOffer,
+                onDismiss = onDismiss,
             )
         }
     }
@@ -2396,6 +2719,7 @@ private fun DiscoveryResponseComposer(
     onOfferMessageChange: (String) -> Unit,
     onOpenCustomPriceDialog: () -> Unit,
     onSubmitQuickOffer: () -> Unit,
+    onDismiss: () -> Unit,
 ) {
     Surface(
         tonalElevation = 2.dp,
@@ -2413,6 +2737,7 @@ private fun DiscoveryResponseComposer(
                     ResponseStatusBanner(
                         title = stringResource(R.string.discovery_offer_success_title),
                         subtitle = stringResource(R.string.discovery_offer_success_message),
+                        onClick = onDismiss,
                     )
                 }
 
@@ -2460,10 +2785,13 @@ private fun DiscoveryResponseComposer(
                     Row(horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium)) {
                         announcementQuickOfferPrice(item.announcement)?.let { quickOfferPriceText ->
                             Button(
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 62.dp),
                                 enabled = !detailsState.isSubmitting,
                                 onClick = onSubmitQuickOffer,
                                 shape = RoundedCornerShape(18.dp),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.tertiary,
                                 ),
@@ -2479,18 +2807,33 @@ private fun DiscoveryResponseComposer(
                                 }
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column {
-                                    Text(text = "Быстрый отклик")
-                                    Text(text = quickOfferPriceText, style = MaterialTheme.typography.labelSmall)
+                                    Text(
+                                        text = "Быстрый отклик",
+                                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                                    )
+                                    Text(
+                                        text = quickOfferPriceText,
+                                        style = MaterialTheme.typography.labelMedium,
+                                    )
                                 }
                             }
                         }
 
                         OutlinedButton(
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = 62.dp),
                             enabled = !detailsState.isSubmitting,
                             onClick = onOpenCustomPriceDialog,
                             shape = RoundedCornerShape(18.dp),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp),
                         ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Inventory2,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(text = "Своя цена")
                         }
                     }
@@ -2501,8 +2844,17 @@ private fun DiscoveryResponseComposer(
 }
 
 @Composable
-private fun ResponseStatusBanner(title: String, subtitle: String) {
+private fun ResponseStatusBanner(
+    title: String,
+    subtitle: String,
+    onClick: (() -> Unit)? = null,
+) {
     Surface(
+        modifier = if (onClick != null) {
+            Modifier.clickable(onClick = onClick)
+        } else {
+            Modifier
+        },
         shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.65f),
     ) {

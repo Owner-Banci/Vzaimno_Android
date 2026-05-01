@@ -24,6 +24,8 @@ data class ChatMessageDto(
     @SerialName("thread_id") val threadId: String,
     @SerialName("sender_id") val senderId: String,
     val text: String,
+    val type: String = "text",
+    @SerialName("media_url") val mediaUrl: String? = null,
     @SerialName("created_at") val createdAt: String,
 )
 

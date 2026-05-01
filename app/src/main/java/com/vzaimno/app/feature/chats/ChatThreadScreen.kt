@@ -1,7 +1,12 @@
 package com.vzaimno.app.feature.chats
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,11 +29,15 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Send
+import androidx.compose.material.icons.outlined.AddPhotoAlternate
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.ReportGmailerrorred
 import androidx.compose.material.ExperimentalMaterialApi
@@ -64,8 +73,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -73,6 +85,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
@@ -105,6 +119,8 @@ fun ChatThreadRoute(
         onRefresh = viewModel::refresh,
         onRetry = viewModel::retry,
         onComposerTextChanged = viewModel::updateComposerText,
+        onImagePicked = viewModel::onImagePicked,
+        onRemovePendingImage = viewModel::removePendingImage,
         onSend = viewModel::sendMessage,
         onOpenReport = viewModel::showReportSheet,
         onDismissReport = viewModel::dismissReportSheet,
@@ -145,6 +161,8 @@ private fun ChatThreadScreen(
     onRefresh: () -> Unit,
     onRetry: () -> Unit,
     onComposerTextChanged: (String) -> Unit,
+    onImagePicked: (Uri?) -> Unit,
+    onRemovePendingImage: () -> Unit,
     onSend: () -> Unit,
     onOpenReport: () -> Unit,
     onDismissReport: () -> Unit,
@@ -198,6 +216,11 @@ private fun ChatThreadScreen(
         }
     }
     var previousMessageCount by remember { mutableIntStateOf(messages.size) }
+    var selectedImageUrl by remember { mutableStateOf<String?>(null) }
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+        onResult = onImagePicked,
+    )
 
     LaunchedEffect(messages.size) {
         if (messages.isEmpty()) return@LaunchedEffect
@@ -354,6 +377,7 @@ private fun ChatThreadScreen(
                                         DateDivider(
                                             title = formatDateDivider(message.createdAtEpochSeconds),
                                         )
+                                        Spacer(modifier = Modifier.height(MaterialTheme.spacing.medium))
                                     }
 
                                     val showTap = shouldShowCounterpartyTapTargetUi(
@@ -364,6 +388,7 @@ private fun ChatThreadScreen(
                                     MessageBubble(
                                         message = message,
                                         onSystemMessageTap = if (showTap) onRespondAsCounterparty else null,
+                                        onImageClick = { imageUrl -> selectedImageUrl = imageUrl },
                                     )
                                 }
                             }
@@ -405,12 +430,28 @@ private fun ChatThreadScreen(
 
             ComposerBar(
                 value = state.composerText,
+                pendingImage = state.pendingImage,
+                uploadStatusMessage = state.imageUploadStatusMessage,
                 onValueChange = onComposerTextChanged,
+                onPickImage = {
+                    imagePickerLauncher.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                    )
+                },
+                onRemoveImage = onRemovePendingImage,
                 onSend = onSend,
                 enabled = !state.messagesState.isInitialLoading && !state.supportThreadState.isResolving,
+                canAttachImage = state.messagesState.kind != ChatConversationKind.Support,
                 isSending = state.isSending,
             )
         }
+    }
+
+    selectedImageUrl?.let { imageUrl ->
+        PhotoViewerDialog(
+            imageUrl = imageUrl,
+            onDismiss = { selectedImageUrl = null },
+        )
     }
 
     if (state.reportState.isSheetVisible) {
@@ -595,6 +636,7 @@ private fun DateDivider(
 private fun MessageBubble(
     message: ChatMessageUi,
     onSystemMessageTap: (() -> Unit)? = null,
+    onImageClick: (String) -> Unit = {},
 ) {
     val alignment = when {
         message.isSystem -> Alignment.CenterHorizontally
@@ -638,11 +680,25 @@ private fun MessageBubble(
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Text(
-                    text = message.text,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = textColor,
-                )
+                message.mediaUrl?.let { imageUrl ->
+                    AsyncImage(
+                        model = imageUrl,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(220.dp)
+                            .clip(RoundedCornerShape(18.dp))
+                            .clickable { onImageClick(imageUrl) },
+                        contentScale = ContentScale.Crop,
+                    )
+                }
+                if (message.text.isNotBlank() && !(message.mediaUrl != null && message.text == "Фото")) {
+                    Text(
+                        text = message.text,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = textColor,
+                    )
+                }
                 Text(
                     text = message.timeLabel,
                     style = MaterialTheme.typography.labelMedium,
@@ -653,6 +709,101 @@ private fun MessageBubble(
                         text = "Нажмите, чтобы ответить",
                         style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
                         color = MaterialTheme.colorScheme.tertiary,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PhotoViewerDialog(
+    imageUrl: String,
+    onDismiss: () -> Unit,
+) {
+    var scale by remember(imageUrl) { mutableStateOf(1f) }
+    var offset by remember(imageUrl) { mutableStateOf(Offset.Zero) }
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.94f)),
+        ) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(vertical = 72.dp, horizontal = 12.dp)
+                    .graphicsLayer(
+                        scaleX = scale,
+                        scaleY = scale,
+                        translationX = offset.x,
+                        translationY = offset.y,
+                    )
+                    .pointerInput(imageUrl) {
+                        detectTransformGestures { _, pan, zoom, _ ->
+                            val nextScale = (scale * zoom).coerceIn(1f, 5f)
+                            scale = nextScale
+                            offset = if (nextScale == 1f) {
+                                Offset.Zero
+                            } else {
+                                offset + pan
+                            }
+                        }
+                    },
+                contentScale = ContentScale.Fit,
+            )
+
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = Color.White.copy(alpha = 0.16f),
+                ) {
+                    Text(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clickable {
+                                scale = (scale / 1.25f).coerceAtLeast(1f)
+                                if (scale == 1f) offset = Offset.Zero
+                            }
+                            .padding(top = 8.dp),
+                        text = "-",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleLarge,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                Surface(
+                    shape = CircleShape,
+                    color = Color.White.copy(alpha = 0.16f),
+                ) {
+                    Text(
+                        modifier = Modifier
+                            .size(44.dp)
+                            .clickable { scale = (scale * 1.25f).coerceAtMost(5f) }
+                            .padding(top = 8.dp),
+                        text = "+",
+                        color = Color.White,
+                        style = MaterialTheme.typography.titleLarge,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+                IconButton(onClick = onDismiss) {
+                    Icon(
+                        imageVector = Icons.Outlined.Close,
+                        contentDescription = "Закрыть фото",
+                        tint = Color.White,
                     )
                 }
             }
@@ -706,9 +857,14 @@ private fun ReviewEligibilityCard(
 @Composable
 private fun ComposerBar(
     value: String,
+    pendingImage: PendingChatImageUi?,
+    uploadStatusMessage: String?,
     onValueChange: (String) -> Unit,
+    onPickImage: () -> Unit,
+    onRemoveImage: () -> Unit,
     onSend: () -> Unit,
     enabled: Boolean,
+    canAttachImage: Boolean,
     isSending: Boolean,
 ) {
     Surface(
@@ -716,76 +872,149 @@ private fun ComposerBar(
         shadowElevation = 6.dp,
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
     ) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
                 .imePadding()
                 .padding(horizontal = MaterialTheme.spacing.large)
                 .padding(top = MaterialTheme.spacing.medium, bottom = MaterialTheme.spacing.large),
-            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
-            verticalAlignment = Alignment.Bottom,
+            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
         ) {
-            OutlinedTextField(
-                modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = 56.dp),
-                value = value,
-                onValueChange = onValueChange,
-                enabled = enabled && !isSending,
-                placeholder = {
-                    Text(text = stringResource(R.string.chats_composer_placeholder))
-                },
-                maxLines = 4,
-                shape = RoundedCornerShape(24.dp),
-                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                    imeAction = ImeAction.Send,
-                ),
-                keyboardActions = androidx.compose.foundation.text.KeyboardActions(
-                    onSend = {
-                        if (enabled && !isSending && value.trim().isNotBlank()) {
-                            onSend()
-                        }
-                    },
-                ),
-            )
+            pendingImage?.let { image ->
+                PendingImagePreview(
+                    image = image,
+                    onRemove = onRemoveImage,
+                )
+            }
+            uploadStatusMessage?.takeIf(String::isNotBlank)?.let { message ->
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
 
-            Surface(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .clickable(
-                        enabled = enabled && !isSending && value.trim().isNotBlank(),
-                        onClick = onSend,
-                    ),
-                shape = CircleShape,
-                color = if (enabled && value.trim().isNotBlank()) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    MaterialTheme.colorScheme.surfaceVariant
-                },
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+                verticalAlignment = Alignment.Bottom,
             ) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                ) {
-                    if (isSending) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                        )
-                    } else {
+                if (canAttachImage) {
+                    IconButton(
+                        modifier = Modifier.size(56.dp),
+                        enabled = enabled && !isSending,
+                        onClick = onPickImage,
+                    ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Outlined.Send,
-                            contentDescription = stringResource(R.string.chats_send),
-                            tint = if (enabled && value.trim().isNotBlank()) {
-                                MaterialTheme.colorScheme.onPrimary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            },
+                            imageVector = Icons.Outlined.AddPhotoAlternate,
+                            contentDescription = "Прикрепить фото",
                         )
                     }
                 }
+
+                OutlinedTextField(
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 56.dp),
+                    value = value,
+                    onValueChange = onValueChange,
+                    enabled = enabled && !isSending,
+                    placeholder = {
+                        Text(text = stringResource(R.string.chats_composer_placeholder))
+                    },
+                    maxLines = 4,
+                    shape = RoundedCornerShape(24.dp),
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        imeAction = ImeAction.Send,
+                    ),
+                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                        onSend = {
+                            if (enabled && !isSending && (value.trim().isNotBlank() || pendingImage != null)) {
+                                onSend()
+                            }
+                        },
+                    ),
+                )
+
+                val canSend = enabled && !isSending && (value.trim().isNotBlank() || pendingImage != null)
+                Surface(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .clickable(
+                            enabled = canSend,
+                            onClick = onSend,
+                        ),
+                    shape = CircleShape,
+                    color = if (canSend) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.surfaceVariant
+                    },
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (isSending) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary,
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Outlined.Send,
+                                contentDescription = stringResource(R.string.chats_send),
+                                tint = if (canSend) {
+                                    MaterialTheme.colorScheme.onPrimary
+                                } else {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PendingImagePreview(
+    image: PendingChatImageUi,
+    onRemove: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.68f),
+    ) {
+        Row(
+            modifier = Modifier.padding(MaterialTheme.spacing.small),
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            AsyncImage(
+                model = Uri.parse(image.uriString),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(14.dp)),
+                contentScale = ContentScale.Crop,
+            )
+            Text(
+                modifier = Modifier.weight(1f),
+                text = image.fileName ?: "Фото",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            IconButton(onClick = onRemove) {
+                Icon(
+                    imageVector = Icons.Outlined.Close,
+                    contentDescription = "Убрать фото",
+                )
             }
         }
     }
@@ -806,6 +1035,7 @@ private fun ReportBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = MaterialTheme.spacing.xLarge)
                 .padding(bottom = MaterialTheme.spacing.xxLarge),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
@@ -842,13 +1072,16 @@ private fun ReportBottomSheet(
                     verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
                 ) {
                     state.options.forEach { option ->
+                        val isSelected = state.selectedReasonCode == option.code
+                        val isOtherOption = option.code.equals("other", ignoreCase = true) ||
+                            option.title.equals("Другое", ignoreCase = true)
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(22.dp))
                                 .clickable { onReasonSelected(option.code) },
                             shape = RoundedCornerShape(22.dp),
-                            color = if (state.selectedReasonCode == option.code) {
+                            color = if (isSelected) {
                                 MaterialTheme.colorScheme.primaryContainer
                             } else {
                                 MaterialTheme.colorScheme.surface
@@ -861,33 +1094,34 @@ private fun ReportBottomSheet(
                             ) {
                                 Text(
                                     text = option.title,
-                                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                                     color = MaterialTheme.colorScheme.onSurface,
                                 )
                                 Text(
                                     text = option.description,
-                                    style = MaterialTheme.typography.bodySmall,
+                                    style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
+                                if (isSelected && isOtherOption) {
+                                    OutlinedTextField(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        value = state.comment,
+                                        onValueChange = onCommentChanged,
+                                        label = {
+                                            Text(text = stringResource(R.string.chats_report_comment_label))
+                                        },
+                                        placeholder = {
+                                            Text(text = stringResource(R.string.chats_report_comment_placeholder))
+                                        },
+                                        minLines = 3,
+                                        maxLines = 4,
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
-
-            OutlinedTextField(
-                modifier = Modifier.fillMaxWidth(),
-                value = state.comment,
-                onValueChange = onCommentChanged,
-                label = {
-                    Text(text = stringResource(R.string.chats_report_comment_label))
-                },
-                placeholder = {
-                    Text(text = stringResource(R.string.chats_report_comment_placeholder))
-                },
-                minLines = 3,
-                maxLines = 4,
-            )
 
             state.errorMessage?.let { message ->
                 InlineInfoCard(message = message)

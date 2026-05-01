@@ -19,10 +19,15 @@ data class ChatMessage(
     val threadId: String,
     val senderId: String,
     val text: String,
+    val type: String,
+    val mediaUrl: String?,
     val createdAtEpochSeconds: Long,
 ) {
     val isSystem: Boolean
         get() = senderId == "system"
+
+    val isImage: Boolean
+        get() = type == "image" && !mediaUrl.isNullOrBlank()
 }
 
 data class ReportReasonOption(

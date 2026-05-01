@@ -216,10 +216,12 @@ fun Announcement.decisionSummaryUi(): AnnouncementDecisionSummaryUi? {
     return null
 }
 
-fun Announcement.canArchiveFromAds(): Boolean = taskStateProjection.lifecycleStatus !in setOf(
-    TaskLifecycleStatus.Archived,
-    TaskLifecycleStatus.Deleted,
-)
+fun Announcement.canArchiveFromAds(): Boolean =
+    adsBucket() != AdsFilterBucket.Archive &&
+        taskStateProjection.lifecycleStatus !in setOf(
+            TaskLifecycleStatus.Archived,
+            TaskLifecycleStatus.Deleted,
+        )
 
 fun Announcement.canDeleteFromAds(): Boolean =
     taskStateProjection.lifecycleStatus != TaskLifecycleStatus.Deleted

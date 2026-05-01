@@ -9,7 +9,6 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -54,12 +53,25 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vzaimno.app.core.designsystem.theme.Background
+import com.vzaimno.app.core.designsystem.theme.ChipBackground
+import com.vzaimno.app.core.designsystem.theme.Outline
+import com.vzaimno.app.core.designsystem.theme.OutlineVariant
+import com.vzaimno.app.core.designsystem.theme.Primary
+import com.vzaimno.app.core.designsystem.theme.PrimaryBright
+import com.vzaimno.app.core.designsystem.theme.PrimaryDark
+import com.vzaimno.app.core.designsystem.theme.Surface
+import com.vzaimno.app.core.designsystem.theme.SurfaceAlt
+import com.vzaimno.app.core.designsystem.theme.SurfaceVariant
+import com.vzaimno.app.core.designsystem.theme.TextPrimary
+import com.vzaimno.app.core.designsystem.theme.TextSecondary
 
 val SectionCardRadius = 26.dp
 val InnerCardRadius = 20.dp
@@ -110,38 +122,39 @@ internal data class CreateAdPalette(
 @Composable
 internal fun rememberCreateAdPalette(): CreateAdPalette {
     val scheme = MaterialTheme.colorScheme
-    return if (isSystemInDarkTheme()) {
+    val isDarkTheme = scheme.background.luminance() < 0.5f
+    return if (isDarkTheme) {
         CreateAdPalette(
             isDark = true,
-            screenBackground = Color(0xFF0B100F),
-            topBarBackground = Color(0xFF0B100F),
-            sectionSurface = Color(0xFF101615),
-            sectionSurfaceAlt = Color(0xFF151C1A),
-            surfaceMuted = Color(0xFF1D2523),
-            border = Color(0xFF2F3A38),
-            borderStrong = Color(0xFF586763),
-            textPrimary = Color(0xFFE7EDE9),
-            textSecondary = Color(0xFFA4AFAB),
-            accent = scheme.primary,
-            accentSoft = Color(0xFF4F615D),
-            accentStrong = Color(0xFFD7E8E2),
-            selectedContainer = Color(0xFF52645F),
-            selectedContent = Color(0xFFF0F7F4),
-            selectedIconContainer = Color(0xFFE4ECE8),
-            selectedIconContent = Color(0xFF253431),
-            inputSurface = Color(0xFF0C1211),
-            inputBorder = Color(0xFF566660),
-            noticeSurface = Color(0xFF3E5675),
-            noticeContent = Color(0xFFDCE8FF),
+            screenBackground = Background,
+            topBarBackground = Background,
+            sectionSurface = Surface,
+            sectionSurfaceAlt = SurfaceAlt,
+            surfaceMuted = ChipBackground,
+            border = OutlineVariant,
+            borderStrong = Outline,
+            textPrimary = TextPrimary,
+            textSecondary = TextSecondary,
+            accent = Primary,
+            accentSoft = OutlineVariant,
+            accentStrong = PrimaryBright,
+            selectedContainer = PrimaryDark,
+            selectedContent = TextPrimary,
+            selectedIconContainer = PrimaryBright,
+            selectedIconContent = Background,
+            inputSurface = SurfaceAlt,
+            inputBorder = Outline,
+            noticeSurface = SurfaceVariant,
+            noticeContent = TextPrimary,
             warningSurface = Color(0xFF3A2B21),
             warningContent = Color(0xFFFFDABD),
-            ctaContainer = Color(0xFFD2E6E0),
-            ctaContent = Color(0xFF263531),
-            previewHeroStart = Color(0xFF52635F),
-            previewHeroEnd = Color(0xFF4B5B57),
-            previewFooter = Color(0xFF202624),
-            previewChip = Color(0xFF121816),
-            previewChipContent = Color(0xFFDCE8E3),
+            ctaContainer = PrimaryBright,
+            ctaContent = Background,
+            previewHeroStart = SurfaceVariant,
+            previewHeroEnd = Surface,
+            previewFooter = SurfaceAlt,
+            previewChip = ChipBackground,
+            previewChipContent = TextSecondary,
             shadow = Color.Black.copy(alpha = 0.28f),
         )
     } else {

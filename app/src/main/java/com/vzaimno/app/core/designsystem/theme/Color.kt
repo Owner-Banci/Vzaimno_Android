@@ -16,6 +16,29 @@ private val Mist = Color(0xFFEAF1EF)
 private val Charcoal = Color(0xFF111315)
 private val Slate = Color(0xFF6B7280)
 
+// ===== Dark mockup tokens =====
+val Background = Color(0xFF0D1C21)
+val Surface = Color(0xFF13262B)
+val SurfaceVariant = Color(0xFF173136)
+val SurfaceAlt = Color(0xFF102126)
+
+val Outline = Color(0xFF274A4D)
+val OutlineVariant = Color(0xFF263C42)
+
+val Primary = Color(0xFF54B8B6)
+val PrimaryBright = Color(0xFF62CCC9)
+val PrimaryPressed = Color(0xFF57C1BC)
+val PrimaryDark = Color(0xFF3CA6A3)
+
+val TextPrimary = Color(0xFFEDEEF0)
+val TextSecondary = Color(0xFF969FAB)
+val TextTertiary = Color(0xFF6C7985)
+
+val ChipBackground = Color(0xFF263C42)
+val NavBarBackground = Color(0xFF102126)
+
+val Success = PrimaryBright
+
 internal val VzaimnoLightColorScheme = lightColorScheme(
     primary = TurquoiseDark,
     onPrimary = Color.White,
@@ -49,31 +72,33 @@ internal val VzaimnoLightColorScheme = lightColorScheme(
 )
 
 internal val VzaimnoDarkColorScheme = darkColorScheme(
-    primary = TurquoiseContainer,
-    onPrimary = Charcoal,
-    primaryContainer = TurquoiseDark,
-    onPrimaryContainer = Color.White,
-    secondary = TurquoiseContainer,
-    onSecondary = Charcoal,
-    secondaryContainer = TurquoiseDark,
-    onSecondaryContainer = Color.White,
-    tertiary = Turquoise,
-    onTertiary = Charcoal,
-    background = Color(0xFF111315),
-    onBackground = Color(0xFFF5F1E8),
-    surface = Color(0xFF1C1E20),
-    onSurface = Color(0xFFF5F1E8),
-    surfaceVariant = Color(0xFF2B3131),
-    onSurfaceVariant = Color(0xFFD1D7D4),
-    outline = Color(0xFF4B5563),
-    outlineVariant = Color(0xFF374151),
-    surfaceContainerLowest = Color(0xFF111315),
-    surfaceContainerLow = Color(0xFF1C1E20),
-    surfaceContainer = Color(0xFF232628),
-    surfaceContainerHigh = Color(0xFF2C2F32),
-    surfaceContainerHighest = Color(0xFF36393C),
-    error = Color(0xFFFF6B7A),
-    onError = Charcoal,
+    primary = Primary,
+    onPrimary = Background,
+    primaryContainer = PrimaryDark,
+    onPrimaryContainer = TextPrimary,
+    secondary = PrimaryPressed,
+    onSecondary = Background,
+    secondaryContainer = SurfaceVariant,
+    onSecondaryContainer = TextPrimary,
+    tertiary = PrimaryBright,
+    onTertiary = Background,
+    background = Background,
+    onBackground = TextPrimary,
+    surface = Surface,
+    onSurface = TextPrimary,
+    surfaceVariant = SurfaceVariant,
+    onSurfaceVariant = TextSecondary,
+    outline = Outline,
+    outlineVariant = OutlineVariant,
+    surfaceContainerLowest = Background,
+    surfaceContainerLow = SurfaceAlt,
+    surfaceContainer = Surface,
+    surfaceContainerHigh = SurfaceVariant,
+    surfaceContainerHighest = ChipBackground,
+    inverseSurface = TextPrimary,
+    inverseOnSurface = Background,
+    error = Color(0xFFCF6679),
+    onError = Color.White,
     errorContainer = Color(0xFF3D1520),
     onErrorContainer = Color(0xFFFFB3BC),
 )

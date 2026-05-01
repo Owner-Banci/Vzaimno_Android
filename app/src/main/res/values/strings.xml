@@ -144,6 +144,7 @@
     <string name="ads_item_menu">Действия с объявлением</string>
     <string name="ads_no_photo_chip">Без фото</string>
     <string name="ads_offers_count">%1$d откликов</string>
+    <string name="ads_offers_owner_hint">Можно выбрать исполнителя среди уже полученных откликов.</string>
     <string name="ads_image_preview_description">Предпросмотр фото объявления</string>
 
     <string name="ads_create_entry_title">Новое объявление</string>
@@ -428,14 +429,14 @@
     <string name="discovery_offer_message_label">Сообщение к отклику</string>
     <string name="discovery_offer_message_placeholder">Напишите короткое сообщение заказчику, если это поможет быстрее договориться.</string>
     <string name="discovery_offer_custom_price">Своя цена</string>
-    <string name="discovery_offer_quick_price">Быстрый отклик • %1$d ₽</string>
+    <string name="discovery_offer_quick_price">%1$d ₽</string>
     <string name="discovery_offer_custom_title">Своя цена</string>
     <string name="discovery_offer_custom_field">Предложенная сумма</string>
     <string name="discovery_offer_custom_error">Укажите сумму цифрами</string>
     <string name="discovery_offer_send">Отправить</string>
     <string name="discovery_offer_cancel">Отмена</string>
     <string name="discovery_offer_success_title">Отклик отправлен</string>
-    <string name="discovery_offer_success_message">Заказчик увидит ваше предложение у себя в объявлении. Мы оставили вас в discovery и локально обновили карточку.</string>
+    <string name="discovery_offer_success_message">Заказчик увидит ваше предложение. Подождите, пока он ответит.</string>
 
     <string name="ads_offers_section_title">Отклики</string>
     <string name="ads_offers_loading">Загружаем отклики…</string>
@@ -581,7 +582,7 @@
 
     <string name="profile_settings_section_title">Настройки</string>
     <string name="profile_settings_dark_theme">Тёмная тема</string>
-    <string name="profile_settings_dark_theme_subtitle">Следовать системной теме устройства</string>
+    <string name="profile_settings_dark_theme_subtitle">Включить тёмную палитру приложения</string>
     <string name="profile_settings_notifications">Уведомления</string>
     <string name="profile_settings_notifications_subtitle">Управление push-уведомлениями и звуками</string>
     <string name="profile_settings_payments">Оплата</string>

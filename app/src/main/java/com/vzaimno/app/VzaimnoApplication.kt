@@ -1,11 +1,17 @@
 package com.vzaimno.app
 
 import android.app.Application
+import coil.ImageLoader
+import coil.ImageLoaderFactory
 import com.yandex.mapkit.MapKitFactory
 import dagger.hilt.android.HiltAndroidApp
+import javax.inject.Inject
 
 @HiltAndroidApp
-class VzaimnoApplication : Application() {
+class VzaimnoApplication : Application(), ImageLoaderFactory {
+
+    @Inject
+    lateinit var imageLoader: ImageLoader
 
     override fun onCreate() {
         super.onCreate()
@@ -15,4 +21,6 @@ class VzaimnoApplication : Application() {
         }
         MapKitFactory.initialize(this)
     }
+
+    override fun newImageLoader(): ImageLoader = imageLoader
 }

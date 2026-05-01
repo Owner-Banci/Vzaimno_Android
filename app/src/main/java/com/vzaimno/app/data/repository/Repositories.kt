@@ -61,6 +61,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.RequestBody.Companion.toRequestBody
 
 interface AuthRepository {
     suspend fun register(credentials: RegisterCredentials): ApiResult<AccessToken>
@@ -124,6 +126,12 @@ interface ChatRepository {
     ): ApiResult<List<com.vzaimno.app.core.model.ChatMessage>>
 
     suspend fun sendMessage(threadId: String, text: String): ApiResult<com.vzaimno.app.core.model.ChatMessage>
+    suspend fun sendImageMessage(
+        threadId: String,
+        text: String?,
+        file: UploadFilePayload,
+    ): ApiResult<com.vzaimno.app.core.model.ChatMessage>
+
     suspend fun ensureSupportThread(): ApiResult<String>
     suspend fun fetchSupportMessages(
         threadId: String,
@@ -438,7 +446,7 @@ class DefaultChatRepository @Inject constructor(
             threadId = threadId,
             limit = limit,
             before = before?.let(DateTimeFormatter.ISO_INSTANT::format),
-        ).map { it.toDomain() }
+        ).map { it.toDomain(appConfig.normalizedApiBaseUrl) }
     }
 
     override suspend fun sendMessage(
@@ -448,7 +456,21 @@ class DefaultChatRepository @Inject constructor(
         chatApi.sendMessage(
             threadId = threadId,
             request = SendChatMessageRequestDto(text = text),
-        ).toDomain()
+        ).toDomain(appConfig.normalizedApiBaseUrl)
+    }
+
+    override suspend fun sendImageMessage(
+        threadId: String,
+        text: String?,
+        file: UploadFilePayload,
+    ): ApiResult<com.vzaimno.app.core.model.ChatMessage> = repositoryCall {
+        chatApi.sendImageMessage(
+            threadId = threadId,
+            file = file.toMultipartPart(fieldName = "file"),
+            text = text
+                ?.trimmedOrNull()
+                ?.toRequestBody("text/plain".toMediaTypeOrNull()),
+        ).toDomain(appConfig.normalizedApiBaseUrl)
     }
 
     override suspend fun ensureSupportThread(): ApiResult<String> = repositoryCall {
@@ -464,7 +486,7 @@ class DefaultChatRepository @Inject constructor(
             threadId = threadId,
             limit = limit,
             before = before?.let(DateTimeFormatter.ISO_INSTANT::format),
-        ).map { it.toDomain() }
+        ).map { it.toDomain(appConfig.normalizedApiBaseUrl) }
     }
 
     override suspend fun sendSupportMessage(
@@ -474,7 +496,7 @@ class DefaultChatRepository @Inject constructor(
         chatApi.sendSupportMessage(
             threadId = threadId,
             request = SendChatMessageRequestDto(text = text),
-        ).toDomain()
+        ).toDomain(appConfig.normalizedApiBaseUrl)
     }
 
     override suspend fun fetchReportReasonOptions(): ApiResult<List<ReportReasonOption>> = repositoryCall {

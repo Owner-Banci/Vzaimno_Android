@@ -1,6 +1,7 @@
 package com.vzaimno.app.feature.ads
 
 import android.text.format.DateUtils
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -948,7 +949,7 @@ private fun AnnouncementOffersSection(
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Text(
-                    text = stringResource(section.summaryRes),
+                    text = stringResource(R.string.ads_offers_owner_hint),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface,
                 )
@@ -961,11 +962,6 @@ private fun AnnouncementOffersSection(
                     )
                 }
             }
-
-            ToneBadge(
-                label = stringResource(section.stateLabelRes),
-                tone = section.stateTone,
-            )
         }
 
         if (!offersState.contentMessage.isNullOrBlank()) {
@@ -1096,7 +1092,8 @@ private fun OfferResponseCard(
 
     Surface(
         shape = RoundedCornerShape(26.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.34f),
+        color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.7f),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.62f)),
     ) {
         Column(
             modifier = Modifier.padding(MaterialTheme.spacing.large),
@@ -1446,6 +1443,8 @@ private fun DetailsSectionCard(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
         ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.84f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Column(
             modifier = Modifier.padding(MaterialTheme.spacing.xLarge),
@@ -1517,13 +1516,14 @@ private fun ToneBadge(
 
     Surface(
         shape = RoundedCornerShape(999.dp),
-        color = containerColor,
+        color = Color.Transparent,
+        border = BorderStroke(1.dp, containerColor.copy(alpha = 0.72f)),
     ) {
         Text(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
             text = label,
             style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-            color = Color.White,
+            color = containerColor,
         )
     }
 }
@@ -1574,11 +1574,11 @@ private fun DetailsMessageCard(
 ) {
     val containerColor = when (tone) {
         DetailsMessageTone.Warning -> MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.58f)
-        DetailsMessageTone.Error -> Color(0xFFF7E5E3)
+        DetailsMessageTone.Error -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.82f)
     }
     val iconTint = when (tone) {
         DetailsMessageTone.Warning -> MaterialTheme.colorScheme.secondary
-        DetailsMessageTone.Error -> Color(0xFFBA5C54)
+        DetailsMessageTone.Error -> MaterialTheme.colorScheme.error
     }
 
     Card(

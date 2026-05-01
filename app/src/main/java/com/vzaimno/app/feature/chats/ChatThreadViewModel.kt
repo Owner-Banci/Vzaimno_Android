@@ -1,5 +1,8 @@
 package com.vzaimno.app.feature.chats
 
+import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -7,9 +10,11 @@ import com.vzaimno.app.core.model.ChatMessage
 import com.vzaimno.app.core.model.ChatThreadPreview
 import com.vzaimno.app.core.model.DisputeState
 import com.vzaimno.app.core.network.ApiResult
+import com.vzaimno.app.core.network.UploadFilePayload
 import com.vzaimno.app.data.repository.ChatRepository
 import com.vzaimno.app.data.repository.ProfileRepository
 import com.vzaimno.app.data.repository.SessionManager
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Job
@@ -23,6 +28,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class ChatThreadViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
+    @ApplicationContext private val context: Context,
     private val chatRepository: ChatRepository,
     private val profileRepository: ProfileRepository,
     private val sessionManager: SessionManager,
@@ -129,10 +135,40 @@ class ChatThreadViewModel @Inject constructor(
         }
     }
 
+    fun onImagePicked(uri: Uri?) {
+        if (uri == null) return
+        _uiState.update { state ->
+            state.copy(
+                pendingImage = PendingChatImageUi(
+                    uriString = uri.toString(),
+                    fileName = queryDisplayName(uri),
+                    mimeType = context.contentResolver.getType(uri),
+                ),
+                messagesState = state.messagesState.copy(errorMessage = null),
+            )
+        }
+    }
+
+    fun removePendingImage() {
+        _uiState.update { state ->
+            state.copy(pendingImage = null)
+        }
+    }
+
     fun sendMessage() {
         val state = _uiState.value
         val threadId = resolvedThreadId() ?: return
         val messageText = state.composerText.trim()
+        val pendingImage = state.pendingImage
+        if (pendingImage != null) {
+            sendImageInBackground(
+                threadId = threadId,
+                image = pendingImage,
+                caption = messageText,
+            )
+            return
+        }
+
         if (messageText.isEmpty() || state.isSending) return
 
         viewModelScope.launch {
@@ -140,7 +176,9 @@ class ChatThreadViewModel @Inject constructor(
                 current.copy(isSending = true)
             }
 
-            when (val result = sendCurrentMessage(threadId = threadId, text = messageText)) {
+            val result = sendCurrentMessage(threadId = threadId, text = messageText)
+
+            when (result) {
                 is ApiResult.Success -> {
                     applyMessages(
                         messages = mergeMessages(currentMessages, listOf(result.value)),
@@ -167,6 +205,97 @@ class ChatThreadViewModel @Inject constructor(
             }
         }
     }
+
+    private fun sendImageInBackground(
+        threadId: String,
+        image: PendingChatImageUi,
+        caption: String,
+    ) {
+        _uiState.update { current ->
+            current.copy(
+                composerText = "",
+                pendingImage = null,
+                pendingImageUploadCount = current.pendingImageUploadCount + 1,
+                imageUploadStatusMessage = "Фото проверяется на безопасность и появится в чате после модерации.",
+                messagesState = current.messagesState.copy(errorMessage = null),
+            )
+        }
+
+        viewModelScope.launch {
+            val payload = buildImagePayload(image)
+            if (payload == null) {
+                finishImageUpload(errorMessage = "Не удалось прочитать фото.")
+                return@launch
+            }
+
+            when (
+                val result = chatRepository.sendImageMessage(
+                    threadId = threadId,
+                    text = caption,
+                    file = payload,
+                )
+            ) {
+                is ApiResult.Success -> {
+                    applyMessages(
+                        messages = mergeMessages(currentMessages, listOf(result.value)),
+                        receivedAtEpochSeconds = System.currentTimeMillis() / 1_000L,
+                    )
+                    finishImageUpload(errorMessage = null)
+                }
+
+                is ApiResult.Failure -> {
+                    finishImageUpload(errorMessage = result.error.message)
+                }
+            }
+        }
+    }
+
+    private fun finishImageUpload(errorMessage: String?) {
+        _uiState.update { current ->
+            val remaining = (current.pendingImageUploadCount - 1).coerceAtLeast(0)
+            current.copy(
+                pendingImageUploadCount = remaining,
+                imageUploadStatusMessage = when {
+                    errorMessage != null -> errorMessage
+                    remaining > 0 -> "Фото проверяется на безопасность и появится в чате после модерации."
+                    else -> null
+                },
+                messagesState = if (errorMessage != null) {
+                    current.messagesState.copy(errorMessage = errorMessage)
+                } else {
+                    current.messagesState
+                },
+            )
+        }
+    }
+
+    private fun buildImagePayload(image: PendingChatImageUi): UploadFilePayload? {
+        val uri = Uri.parse(image.uriString)
+        val bytes = runCatching {
+            context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+        }.getOrNull() ?: return null
+        return UploadFilePayload(
+            bytes = bytes,
+            fileName = image.fileName ?: "chat-photo.jpg",
+            mimeType = image.mimeType ?: "image/jpeg",
+        )
+    }
+
+    private fun queryDisplayName(uri: Uri): String? = runCatching {
+        context.contentResolver.query(
+            uri,
+            arrayOf(OpenableColumns.DISPLAY_NAME),
+            null,
+            null,
+            null,
+        )?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                cursor.getString(cursor.getColumnIndexOrThrow(OpenableColumns.DISPLAY_NAME))
+            } else {
+                null
+            }
+        }
+    }.getOrNull()
 
     fun dismissReportSheet() {
         _uiState.update { state ->
