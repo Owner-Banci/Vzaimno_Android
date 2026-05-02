@@ -47,6 +47,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
+import com.vzaimno.app.core.designsystem.components.VzaimnoBottomSheetColumn
 import com.vzaimno.app.core.designsystem.theme.spacing
 import com.vzaimno.app.core.model.DisputeSettlementOption
 import com.vzaimno.app.core.model.DisputeState
@@ -334,13 +335,7 @@ internal fun OpenDisputeBottomSheet(
     val canSubmit = form.problemDescription.trim().isNotEmpty() && !state.isSubmitting
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = MaterialTheme.spacing.xLarge)
-                .padding(bottom = MaterialTheme.spacing.xxLarge),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
-        ) {
+        VzaimnoBottomSheetColumn {
             Text(
                 text = "Открыть спор",
                 style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
@@ -434,13 +429,7 @@ internal fun CounterpartyDisputeBottomSheet(
     }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = MaterialTheme.spacing.xLarge)
-                .padding(bottom = MaterialTheme.spacing.xxLarge),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
-        ) {
+        VzaimnoBottomSheetColumn {
             Text(
                 text = "Ответ на спор",
                 style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
@@ -589,13 +578,7 @@ internal fun DisputeOptionDetailBottomSheet(
     val canConfirm = !state.isSubmitting && state.canVoteInCurrentRound
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = MaterialTheme.spacing.xLarge)
-                .padding(bottom = MaterialTheme.spacing.xxLarge),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
-        ) {
+        VzaimnoBottomSheetColumn {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     text = "Вариант",

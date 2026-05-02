@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
@@ -122,6 +123,7 @@ import coil.compose.AsyncImage
 import com.vzaimno.app.R
 import com.vzaimno.app.core.common.doubleOrNullCompat
 import com.vzaimno.app.core.common.taskBoolValue
+import com.vzaimno.app.core.designsystem.components.VzaimnoBottomSheetColumn
 import com.vzaimno.app.core.designsystem.theme.spacing
 import com.vzaimno.app.core.model.Announcement
 import com.vzaimno.app.core.model.AnnouncementStructuredData
@@ -2380,16 +2382,8 @@ private fun FiltersBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(
-                    start = MaterialTheme.spacing.xLarge,
-                    top = 0.dp,
-                    end = MaterialTheme.spacing.xLarge,
-                    bottom = MaterialTheme.spacing.xLarge,
-                ),
+        VzaimnoBottomSheetColumn(
+            bottomPadding = MaterialTheme.spacing.xLarge,
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
         ) {
             Row(
@@ -2549,7 +2543,8 @@ private fun AnnouncementDetailsBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .navigationBarsPadding(),
+                .navigationBarsPadding()
+                .imePadding(),
         ) {
             if (detailsState.isLoading) {
                 Row(
@@ -2889,11 +2884,9 @@ private fun CustomOfferPriceSheet(
 ) {
     val currentPrice = priceInput.filter(Char::isDigit).toIntOrNull() ?: 0
     ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(horizontal = MaterialTheme.spacing.xLarge, vertical = MaterialTheme.spacing.large),
+        VzaimnoBottomSheetColumn(
+            topPadding = MaterialTheme.spacing.large,
+            bottomPadding = MaterialTheme.spacing.large,
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
         ) {
             Text(

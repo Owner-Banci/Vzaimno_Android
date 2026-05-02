@@ -44,6 +44,7 @@ import com.vzaimno.app.data.remote.dto.AppealRequestDto
 import com.vzaimno.app.data.remote.dto.CounterpartyDisputeResponseRequestDto
 import com.vzaimno.app.data.remote.dto.CreateOfferRequestDto
 import com.vzaimno.app.data.remote.dto.DeviceRegistrationRequestDto
+import com.vzaimno.app.data.remote.dto.DisputeStateDto
 import com.vzaimno.app.data.remote.dto.EmptyBodyDto
 import com.vzaimno.app.data.remote.dto.ExecutionStageUpdateRequestDto
 import com.vzaimno.app.data.remote.dto.OpenDisputeRequestDto
@@ -61,8 +62,11 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
+import retrofit2.HttpException
 
 interface AuthRepository {
     suspend fun register(credentials: RegisterCredentials): ApiResult<AccessToken>
@@ -429,6 +433,7 @@ class DefaultChatRepository @Inject constructor(
     private val appConfig: AppConfig,
     private val sessionManager: SessionManager,
     private val apiErrorMapper: ApiErrorMapper,
+    private val json: Json,
     @IoDispatcher private val ioDispatcher: CoroutineDispatcher,
 ) : ChatRepository {
 
@@ -522,7 +527,17 @@ class DefaultChatRepository @Inject constructor(
 
     override suspend fun fetchActiveDispute(threadId: String): ApiResult<DisputeState?> {
         val result = repositoryCall {
-            chatApi.getActiveDispute(threadId)?.toDomain()
+            val response = chatApi.getActiveDispute(threadId)
+            if (!response.isSuccessful) {
+                throw HttpException(response)
+            }
+
+            val body = response.body()?.string()?.trim().orEmpty()
+            if (body.isBlank() || body == "null") {
+                null
+            } else {
+                json.decodeFromString<DisputeStateDto>(body).toDomain()
+            }
         }
         // Backward-compatible fallback: older backends respond 404 when no active dispute exists.
         return when {

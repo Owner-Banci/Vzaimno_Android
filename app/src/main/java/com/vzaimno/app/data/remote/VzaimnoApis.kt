@@ -39,6 +39,8 @@ import com.vzaimno.app.data.remote.dto.UnregisterDeviceRequestDto
 import com.vzaimno.app.data.remote.dto.UpdateMyProfileRequestDto
 import com.vzaimno.app.data.remote.dto.UserProfileSectionDto
 import okhttp3.MultipartBody
+import okhttp3.ResponseBody
+import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -206,7 +208,7 @@ interface ChatApi {
     @GET("chats/{threadId}/disputes/active")
     suspend fun getActiveDispute(
         @Path("threadId") threadId: String,
-    ): DisputeStateDto?
+    ): Response<ResponseBody>
 
     @POST("chats/{threadId}/disputes/open")
     suspend fun openDispute(

@@ -29,10 +29,8 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Send
@@ -91,6 +89,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.vzaimno.app.R
+import com.vzaimno.app.core.designsystem.components.VzaimnoBottomSheetColumn
 import com.vzaimno.app.core.designsystem.theme.spacing
 import com.vzaimno.app.feature.shell.navigation.HideShellBottomBarEffect
 
@@ -1032,14 +1031,7 @@ private fun ReportBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = MaterialTheme.spacing.xLarge)
-                .padding(bottom = MaterialTheme.spacing.xxLarge),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
-        ) {
+        VzaimnoBottomSheetColumn {
             Text(
                 text = stringResource(R.string.chats_report_title),
                 style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
@@ -1158,13 +1150,7 @@ private fun ReviewBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = MaterialTheme.spacing.xLarge)
-                .padding(bottom = MaterialTheme.spacing.xxLarge),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.large),
-        ) {
+        VzaimnoBottomSheetColumn {
             Text(
                 text = stringResource(R.string.chats_review_dialog_title),
                 style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),

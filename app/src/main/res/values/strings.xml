@@ -325,7 +325,7 @@
     <string name="discovery_subtitle">Ищите поручения на карте или в списке, настраивайте выдачу и откликайтесь прямо из компактной карточки деталей.</string>
     <string name="discovery_loading_title">Подбираем объявления</string>
     <string name="discovery_loading_message">Загружаем публичную выдачу и готовим карту с актуальными задачами.</string>
-    <string name="discovery_error_title">Не удалось обновить discovery</string>
+    <string name="discovery_error_title">Не удалось загрузить объявления</string>
     <string name="discovery_retry">Повторить</string>
     <string name="discovery_search_placeholder">Поиск по названию, адресу и параметрам</string>
     <string name="discovery_clear_search">Очистить поиск</string>

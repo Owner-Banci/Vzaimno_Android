@@ -1,6 +1,5 @@
 package com.vzaimno.app.core.network
 
-import com.vzaimno.app.BuildConfig
 import java.io.IOException
 import javax.net.ssl.SSLException
 import javax.inject.Inject
@@ -87,7 +86,7 @@ class ApiErrorMapper @Inject constructor(
 
         is SerializationException -> ApiError(
             kind = ApiErrorKind.Serialization,
-            message = "Не удалось разобрать ответ сервера.",
+            message = "Не удалось обновить данные. Попробуйте ещё раз.",
         )
 
         else -> ApiError(
@@ -150,12 +149,11 @@ private fun buildConnectivityMessage(throwable: IOException): String {
         details.contains("tls", ignoreCase = true) ||
         details.contains("ssl", ignoreCase = true) ||
         details.contains("secure connection", ignoreCase = true)
-    val base = if (isTlsError) {
-        "Сеть недоступна: TLS/SSL ошибка при подключении к ${BuildConfig.API_BASE_URL}."
+    return if (isTlsError) {
+        "Не удалось установить безопасное соединение. Проверьте подключение к интернету и попробуйте снова."
     } else {
-        "Не удалось подключиться к серверу (${BuildConfig.API_BASE_URL}). Проверьте интернет и попробуйте снова."
+        "Не удалось загрузить данные. Проверьте подключение к интернету и попробуйте снова."
     }
-    return if (details.isBlank()) base else "$base\n$details"
 }
 
 suspend inline fun <T> safeApiCall(
