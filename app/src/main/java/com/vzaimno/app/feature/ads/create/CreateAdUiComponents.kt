@@ -60,6 +60,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.vzaimno.app.core.designsystem.components.ExpandableOutlinedTextField
 import com.vzaimno.app.core.designsystem.theme.Background
 import com.vzaimno.app.core.designsystem.theme.ChipBackground
 import com.vzaimno.app.core.designsystem.theme.Outline
@@ -915,7 +916,7 @@ fun CreateAdTextArea(
             color = palette.textSecondary,
         )
         Spacer(Modifier.height(6.dp))
-        OutlinedTextField(
+        ExpandableOutlinedTextField(
             value = value,
             onValueChange = onValueChange,
             placeholder = {
@@ -927,7 +928,10 @@ fun CreateAdTextArea(
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = 110.dp),
-            maxLines = 8,
+            minLines = 4,
+            collapsedMaxLines = 8,
+            expandedMinLines = 8,
+            expandedMaxLines = 14,
             shape = RoundedCornerShape(18.dp),
             textStyle = MaterialTheme.typography.bodyLarge,
             colors = OutlinedTextFieldDefaults.colors(

@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -736,31 +737,41 @@ private fun RouteMetricsRow(metrics: List<RouteMetricUi>) {
         horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
     ) {
         items(metrics, key = RouteMetricUi::id) { metric ->
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
+            Surface(
+                modifier = Modifier.sizeIn(
+                    minWidth = 80.dp,
+                    minHeight = 64.dp,
                 ),
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.78f),
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.48f)),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.5.dp),
             ) {
-                Column(
-                    modifier = Modifier.padding(
-                        horizontal = MaterialTheme.spacing.medium,
-                        vertical = MaterialTheme.spacing.small,
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                Box(
+                    modifier = Modifier
+                        .sizeIn(
+                            minWidth = 80.dp,
+                            minHeight = 64.dp,
+                        )
+                        .padding(horizontal = MaterialTheme.spacing.small, vertical = 7.dp),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    Text(
-                        text = metric.label,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        text = metric.value,
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Text(
+                            text = metric.label,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                        )
+                        Text(
+                            text = metric.value,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
                 }
             }
         }
@@ -1000,18 +1011,26 @@ private fun RouteSectionHeader(
                 color = MaterialTheme.colorScheme.onBackground,
             )
             Surface(
+                modifier = Modifier.padding(top = 3.dp),
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.surfaceVariant,
             ) {
-                Text(
-                    text = count.toString(),
-                    modifier = Modifier.padding(
-                        horizontal = MaterialTheme.spacing.medium,
-                        vertical = 2.dp,
-                    ),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Box(
+                    modifier = Modifier
+                        .sizeIn(
+                            minWidth = 36.dp,
+                            minHeight = 24.dp,
+                        )
+                        .padding(horizontal = 10.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = count.toString(),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
         }
         Text(
@@ -1057,7 +1076,7 @@ private fun RouteTaskCard(
                 MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.86f)
             },
         ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
     ) {
         Column(
             modifier = Modifier.padding(MaterialTheme.spacing.large),

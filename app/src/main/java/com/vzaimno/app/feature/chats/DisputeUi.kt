@@ -47,6 +47,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.text.KeyboardOptions
+import com.vzaimno.app.core.designsystem.components.ExpandableOutlinedTextField
 import com.vzaimno.app.core.designsystem.components.VzaimnoBottomSheetColumn
 import com.vzaimno.app.core.designsystem.theme.spacing
 import com.vzaimno.app.core.model.DisputeSettlementOption
@@ -354,13 +355,13 @@ internal fun OpenDisputeBottomSheet(
                 label = { Text(text = "Тема спора") },
                 singleLine = true,
             )
-            OutlinedTextField(
+            ExpandableOutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = form.problemDescription,
                 onValueChange = onDescriptionChanged,
                 label = { Text(text = "Что произошло") },
                 minLines = 4,
-                maxLines = 6,
+                collapsedMaxLines = 6,
             )
             OutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
@@ -482,13 +483,13 @@ internal fun CounterpartyDisputeBottomSheet(
             }
 
             if (!acceptMode) {
-                OutlinedTextField(
+                ExpandableOutlinedTextField(
                     modifier = Modifier.fillMaxWidth(),
                     value = form.responseDescription,
                     onValueChange = onResponseChanged,
                     label = { Text(text = "Ваша версия") },
                     minLines = 4,
-                    maxLines = 6,
+                    collapsedMaxLines = 6,
                 )
 
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {

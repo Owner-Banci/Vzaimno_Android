@@ -53,7 +53,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -89,6 +89,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
 import com.vzaimno.app.R
+import com.vzaimno.app.core.designsystem.components.ExpandableOutlinedTextField
 import com.vzaimno.app.core.designsystem.components.VzaimnoBottomSheetColumn
 import com.vzaimno.app.core.designsystem.theme.spacing
 import com.vzaimno.app.feature.shell.navigation.HideShellBottomBarEffect
@@ -329,7 +330,7 @@ private fun ChatThreadScreen(
                                 start = MaterialTheme.spacing.large,
                                 top = MaterialTheme.spacing.small,
                                 end = MaterialTheme.spacing.large,
-                                bottom = 24.dp,
+                                bottom = 128.dp,
                             ),
                             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.medium),
                         ) {
@@ -425,24 +426,25 @@ private fun ChatThreadScreen(
                     state = pullRefreshState,
                     modifier = Modifier.align(Alignment.TopCenter),
                 )
-            }
 
-            ComposerBar(
-                value = state.composerText,
-                pendingImage = state.pendingImage,
-                uploadStatusMessage = state.imageUploadStatusMessage,
-                onValueChange = onComposerTextChanged,
-                onPickImage = {
-                    imagePickerLauncher.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-                    )
-                },
-                onRemoveImage = onRemovePendingImage,
-                onSend = onSend,
-                enabled = !state.messagesState.isInitialLoading && !state.supportThreadState.isResolving,
-                canAttachImage = state.messagesState.kind != ChatConversationKind.Support,
-                isSending = state.isSending,
-            )
+                ComposerBar(
+                    modifier = Modifier.align(Alignment.BottomCenter),
+                    value = state.composerText,
+                    pendingImage = state.pendingImage,
+                    uploadStatusMessage = state.imageUploadStatusMessage,
+                    onValueChange = onComposerTextChanged,
+                    onPickImage = {
+                        imagePickerLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                        )
+                    },
+                    onRemoveImage = onRemovePendingImage,
+                    onSend = onSend,
+                    enabled = !state.messagesState.isInitialLoading && !state.supportThreadState.isResolving,
+                    canAttachImage = state.messagesState.kind != ChatConversationKind.Support,
+                    isSending = state.isSending,
+                )
+            }
         }
     }
 
@@ -855,6 +857,7 @@ private fun ReviewEligibilityCard(
 
 @Composable
 private fun ComposerBar(
+    modifier: Modifier = Modifier,
     value: String,
     pendingImage: PendingChatImageUi?,
     uploadStatusMessage: String?,
@@ -866,111 +869,125 @@ private fun ComposerBar(
     canAttachImage: Boolean,
     isSending: Boolean,
 ) {
-    Surface(
-        tonalElevation = 3.dp,
-        shadowElevation = 6.dp,
-        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.98f),
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .imePadding()
+            .padding(horizontal = MaterialTheme.spacing.large)
+            .padding(top = MaterialTheme.spacing.small, bottom = MaterialTheme.spacing.medium),
+        verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-                .imePadding()
-                .padding(horizontal = MaterialTheme.spacing.large)
-                .padding(top = MaterialTheme.spacing.medium, bottom = MaterialTheme.spacing.large),
-            verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-        ) {
-            pendingImage?.let { image ->
-                PendingImagePreview(
-                    image = image,
-                    onRemove = onRemoveImage,
-                )
-            }
-            uploadStatusMessage?.takeIf(String::isNotBlank)?.let { message ->
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+        pendingImage?.let { image ->
+            PendingImagePreview(
+                image = image,
+                onRemove = onRemoveImage,
+            )
+        }
+        uploadStatusMessage?.takeIf(String::isNotBlank)?.let { message ->
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
-                verticalAlignment = Alignment.Bottom,
-            ) {
-                if (canAttachImage) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.small),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (canAttachImage) {
+                Surface(
+                    modifier = Modifier.size(52.dp),
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f),
+                ) {
                     IconButton(
-                        modifier = Modifier.size(56.dp),
+                        modifier = Modifier.size(52.dp),
                         enabled = enabled && !isSending,
                         onClick = onPickImage,
                     ) {
                         Icon(
                             imageVector = Icons.Outlined.AddPhotoAlternate,
                             contentDescription = "Прикрепить фото",
+                            tint = MaterialTheme.colorScheme.onSurface,
                         )
                     }
                 }
+            }
 
-                OutlinedTextField(
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = 56.dp),
-                    value = value,
-                    onValueChange = onValueChange,
-                    enabled = enabled && !isSending,
-                    placeholder = {
-                        Text(text = stringResource(R.string.chats_composer_placeholder))
-                    },
-                    maxLines = 4,
-                    shape = RoundedCornerShape(24.dp),
-                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-                        imeAction = ImeAction.Send,
-                    ),
-                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(
-                        onSend = {
-                            if (enabled && !isSending && (value.trim().isNotBlank() || pendingImage != null)) {
-                                onSend()
-                            }
-                        },
-                    ),
-                )
-
-                val canSend = enabled && !isSending && (value.trim().isNotBlank() || pendingImage != null)
-                Surface(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .clip(CircleShape)
-                        .clickable(
-                            enabled = canSend,
-                            onClick = onSend,
-                        ),
-                    shape = CircleShape,
-                    color = if (canSend) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.surfaceVariant
-                    },
-                ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        if (isSending) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                strokeWidth = 2.dp,
-                                color = MaterialTheme.colorScheme.onPrimary,
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Outlined.Send,
-                                contentDescription = stringResource(R.string.chats_send),
-                                tint = if (canSend) {
-                                    MaterialTheme.colorScheme.onPrimary
-                                } else {
-                                    MaterialTheme.colorScheme.onSurfaceVariant
-                                },
-                            )
+            ExpandableOutlinedTextField(
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 54.dp),
+                value = value,
+                onValueChange = onValueChange,
+                enabled = enabled && !isSending,
+                placeholder = {
+                    Text(text = stringResource(R.string.chats_composer_placeholder))
+                },
+                minLines = 1,
+                collapsedMaxLines = 3,
+                expandedMinLines = 5,
+                expandedMaxLines = 8,
+                shape = RoundedCornerShape(28.dp),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    imeAction = ImeAction.Send,
+                ),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                    onSend = {
+                        if (enabled && !isSending && (value.trim().isNotBlank() || pendingImage != null)) {
+                            onSend()
                         }
+                    },
+                ),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+                    unfocusedContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+                    disabledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.88f),
+                    focusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.68f),
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+                    focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    cursorColor = MaterialTheme.colorScheme.primary,
+                ),
+            )
+
+            val canSend = enabled && !isSending && (value.trim().isNotBlank() || pendingImage != null)
+            Surface(
+                modifier = Modifier
+                    .size(52.dp)
+                    .clip(CircleShape)
+                    .clickable(
+                        enabled = canSend,
+                        onClick = onSend,
+                    ),
+                shape = CircleShape,
+                color = if (canSend) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
+                },
+            ) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (isSending) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Outlined.Send,
+                            contentDescription = stringResource(R.string.chats_send),
+                            tint = if (canSend) {
+                                MaterialTheme.colorScheme.onPrimary
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        )
                     }
                 }
             }
@@ -1095,7 +1112,7 @@ private fun ReportBottomSheet(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                                 if (isSelected && isOtherOption) {
-                                    OutlinedTextField(
+                                    ExpandableOutlinedTextField(
                                         modifier = Modifier.fillMaxWidth(),
                                         value = state.comment,
                                         onValueChange = onCommentChanged,
@@ -1106,7 +1123,7 @@ private fun ReportBottomSheet(
                                             Text(text = stringResource(R.string.chats_report_comment_placeholder))
                                         },
                                         minLines = 3,
-                                        maxLines = 4,
+                                        collapsedMaxLines = 4,
                                     )
                                 }
                             }
@@ -1181,7 +1198,7 @@ private fun ReviewBottomSheet(
                 }
             }
 
-            OutlinedTextField(
+            ExpandableOutlinedTextField(
                 modifier = Modifier.fillMaxWidth(),
                 value = state.comment,
                 onValueChange = onCommentChanged,
@@ -1192,7 +1209,7 @@ private fun ReviewBottomSheet(
                     Text(text = stringResource(R.string.chats_review_comment_placeholder))
                 },
                 minLines = 3,
-                maxLines = 4,
+                collapsedMaxLines = 4,
             )
 
             state.errorMessage?.let { message ->

@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vzaimno.app.R
+import com.vzaimno.app.core.designsystem.components.ExpandableOutlinedTextField
 import com.vzaimno.app.core.designsystem.theme.spacing
 import kotlinx.coroutines.launch
 
@@ -447,28 +448,53 @@ private fun ProfileTextField(
     imeAction: ImeAction = ImeAction.Default,
     leadingIcon: (@Composable (() -> Unit))? = null,
 ) {
-    OutlinedTextField(
-        modifier = modifier.fillMaxWidth(),
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(text = label) },
-        placeholder = { Text(text = placeholder) },
-        isError = error != null,
-        minLines = minLines,
-        maxLines = maxLines,
-        leadingIcon = leadingIcon,
-        keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
-            capitalization = capitalization,
-            imeAction = imeAction,
-        ),
-        supportingText = {
+    val supportingContent: @Composable (() -> Unit) = {
+        when {
+            error != null -> Text(text = error)
+            !supportingText.isNullOrBlank() -> Text(text = supportingText)
+        }
+    }
+    val keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+        capitalization = capitalization,
+        imeAction = imeAction,
+    )
+
+    if (maxLines > 1) {
+        ExpandableOutlinedTextField(
+            modifier = modifier.fillMaxWidth(),
+            value = value,
+            onValueChange = onValueChange,
+            label = { Text(text = label) },
+            placeholder = { Text(text = placeholder) },
+            isError = error != null,
+            minLines = minLines,
+            collapsedMaxLines = maxLines,
+            leadingIcon = leadingIcon,
+            keyboardOptions = keyboardOptions,
+            supportingText = supportingContent,
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
+        )
+    } else {
+        OutlinedTextField(
+            modifier = modifier.fillMaxWidth(),
+            value = value,
+            onValueChange = onValueChange,
+            label = { Text(text = label) },
+            placeholder = { Text(text = placeholder) },
+            isError = error != null,
+            minLines = minLines,
+            maxLines = maxLines,
+            leadingIcon = leadingIcon,
+            keyboardOptions = keyboardOptions,
+            supportingText = {
             when {
                 error != null -> Text(text = error)
                 !supportingText.isNullOrBlank() -> Text(text = supportingText)
             }
-        },
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
-    )
+            },
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp),
+        )
+    }
 }
 
 private fun Double.formatForUi(): String = String.format("%.1f", this)

@@ -123,6 +123,7 @@ import coil.compose.AsyncImage
 import com.vzaimno.app.R
 import com.vzaimno.app.core.common.doubleOrNullCompat
 import com.vzaimno.app.core.common.taskBoolValue
+import com.vzaimno.app.core.designsystem.components.ExpandableOutlinedTextField
 import com.vzaimno.app.core.designsystem.components.VzaimnoBottomSheetColumn
 import com.vzaimno.app.core.designsystem.theme.spacing
 import com.vzaimno.app.core.model.Announcement
@@ -2766,14 +2767,14 @@ private fun DiscoveryResponseComposer(
                 }
 
                 else -> {
-                    OutlinedTextField(
+                    ExpandableOutlinedTextField(
                         modifier = Modifier.fillMaxWidth(),
                         value = detailsState.offerMessage,
                         onValueChange = onOfferMessageChange,
                         label = { Text(text = stringResource(R.string.discovery_offer_message_label)) },
                         placeholder = { Text(text = stringResource(R.string.discovery_offer_message_placeholder)) },
                         minLines = 2,
-                        maxLines = 4,
+                        collapsedMaxLines = 4,
                         shape = RoundedCornerShape(18.dp),
                     )
 
